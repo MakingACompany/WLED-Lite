@@ -1,7 +1,7 @@
 {
-  "name": "wled",
-  "version": "17.0.0-dev",
-  "description": "Tools for WLED project",
+  "name": "wled-lite",
+  "version": "0.1.0-lite",
+  "description": "Tools for WLED-Lite, a simplified, hardware-focused fork of WLED",
   "main": "tools/cdata.js",
   "directories": {
     "lib": "lib",
@@ -14,14 +14,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wled/WLED.git"
+    "url": "git+https://github.com/MakingACompany/WLED-Lite.git"
   },
   "author": "",
-  "license": "ISC",
+  "license": "EUPL-1.2",
   "bugs": {
-    "url": "https://github.com/wled/WLED/issues"
+    "url": "https://github.com/MakingACompany/WLED-Lite/issues"
   },
-  "homepage": "https://github.com/wled/WLED#readme",
+  "homepage": "https://github.com/MakingACompany/WLED-Lite#readme",
   "dependencies": {
     "clean-css": "^5.3.3",
     "html-minifier-terser": "^7.2.0",
