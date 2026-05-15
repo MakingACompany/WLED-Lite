@@ -11222,4 +11222,50 @@ addEffect(FX_MODE_PS1DSONICBOOM, &mode_particle1DsonicBoom, _data_FX_MODE_PS_SON
 addEffect(FX_MODE_PS1DSPRINGY, &mode_particleSpringy, _data_FX_MODE_PS_SPRINGY);
 #endif // WLED_DISABLE_PARTICLESYSTEM1D
 
+#ifdef WLED_LITE_FX_TRIM
+  // WLED-Lite: revert every effect not on the curated keepers list back to
+  // _data_RESERVED so the picker only offers the 22 effects intended for
+  // sign / strip use. Effect IDs are NOT shifted -- removed slots stay
+  // reserved, so saved presets that reference dropped IDs still parse and
+  // simply render as STATIC (slot 0). See docs/fx-curation.md for the
+  // rationale behind each keeper. To re-introduce an effect (e.g. for a
+  // matrix build), add its ID below or remove WLED_LITE_FX_TRIM from
+  // build_flags.
+  static const uint8_t wled_lite_fx_keepers[] = {
+    0,   // FX_MODE_STATIC              -- Solid
+    2,   // FX_MODE_BREATH              -- Breathe
+    3,   // FX_MODE_COLOR_WIPE          -- Wipe
+    8,   // FX_MODE_RAINBOW             -- Colorloop (slow color cycle)
+    9,   // FX_MODE_RAINBOW_CYCLE       -- Rainbow
+    12,  // FX_MODE_FADE                -- Fade
+    13,  // FX_MODE_THEATER_CHASE       -- Theater (marquee)
+    15,  // FX_MODE_RUNNING_LIGHTS      -- Running
+    17,  // FX_MODE_TWINKLE             -- Twinkle
+    28,  // FX_MODE_CHASE_COLOR         -- Chase
+    38,  // FX_MODE_AURORA              -- Aurora
+    41,  // FX_MODE_COMET               -- Lighthouse (Comet)
+    65,  // FX_MODE_PALETTE             -- Palette
+    66,  // FX_MODE_FIRE_2012           -- Fire 2012
+    67,  // FX_MODE_COLORWAVES          -- Colorwaves
+    80,  // FX_MODE_TWINKLEFOX          -- Twinklefox
+    89,  // FX_MODE_STARBURST           -- Starburst
+    90,  // FX_MODE_EXPLODING_FIREWORKS -- Exploding Fireworks
+    91,  // FX_MODE_BOUNCINGBALLS       -- Bouncing Balls
+    101, // FX_MODE_PACIFICA            -- Pacifica
+    104, // FX_MODE_SUNRISE             -- Sunrise
+    115, // FX_MODE_BLENDS              -- Blends
+  };
+  // Slot 0 (STATIC) is hardcoded above; iterate the rest.
+  for (size_t id = 1; id < _mode.size(); id++) {
+    bool keep = false;
+    for (size_t k = 0; k < sizeof(wled_lite_fx_keepers); k++) {
+      if (wled_lite_fx_keepers[k] == id) { keep = true; break; }
+    }
+    if (!keep) {
+      _mode[id]     = &mode_static;
+      _modeData[id] = _data_RESERVED;
+    }
+  }
+#endif // WLED_LITE_FX_TRIM
+
 }
