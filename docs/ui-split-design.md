@@ -110,16 +110,17 @@ Untouched architecturally — upstream's existing `settingsPIN` plumbing already
 
 This design doc is the deliverable for Task #5. Actual code lands in later commits, grouped:
 
-| Phase | Work | Tied to plan task |
-|---|---|---|
-| **A** | Curate effects + palettes (defines what the user effect picker will display) | Task #6 |
-| **B** | Replace `wled00/data/index.htm` with the slim user UI sketched above | New sub-task of #5, after #6 has decided the effect list |
-| **C** | Extend `wled00/data/welcome.htm` with the "Set admin PIN" step + write a small server-side check that blocks `/` until PIN is set | New sub-task of #5 |
-| **D** | Audit each remaining settings sub-page for end-user-visible language → make it admin-facing in tone (e.g. remove "tap to learn more about ABL" type aids that are aimed at first-time users) | Polish, late in the project |
-| **E** | (Stretch) Cosmetic theme override so the slim UI doesn't look like upstream WLED — different fonts/colors to make the brand split visible | Polish |
+| Phase | Work | Tied to plan task | Status |
+|---|---|---|---|
+| **A** | Curate effects + palettes (defines what the user effect picker will display) | Task #6 | Effects done; palettes deferred |
+| **B** | Replace `wled00/data/index.htm` with the slim user UI sketched above | New sub-task of #5, after #6 has decided the effect list | **Done** — `index.htm`/`.js`/`.css` rewritten with the "Lantern" aesthetic (warm amber on amber-black, mobile-first). Five sections: power, brightness, color (iro.js), curated effect picker (filters `_data_RESERVED`), nightlight-as-timer. Settings link is a discrete top-right gear. Total ~20 KB uncompressed → ~6 KB after gzip in flash; firmware saved ~25 KB vs upstream's busy index. |
+| **C** | Extend `wled00/data/welcome.htm` with the "Set admin PIN" step + write a small server-side check that blocks `/` until PIN is set | New sub-task of #5 | **HTML done** — `welcome.htm` rewritten with three numbered steps (WiFi → Set PIN → Use your sign), matching the Lantern aesthetic. Step 2 links to `/settings/sec` which is where the PIN field already lives. **Server-side hard-block deferred** — a brand-new device with no PIN is still reachable at `/settings` by anyone on the LAN; for personal use the welcome flow is sufficient guidance, but commercial deployments will want enforcement (see Open follow-ups). |
+| **D** | Audit each remaining settings sub-page for end-user-visible language → make it admin-facing in tone (e.g. remove "tap to learn more about ABL" type aids that are aimed at first-time users) | Polish, late in the project | Open |
+| **E** | (Stretch) Cosmetic theme override so the slim UI doesn't look like upstream WLED — different fonts/colors to make the brand split visible | Polish | **Done implicitly** — the "Lantern" theme in Phase B is the brand-distinguishing layer. |
 
 **Open issues / things I deferred:**
 
+- **Server-side hard-block on `/` until PIN is set.** Phase C currently relies on the welcome wizard to guide the maintainer through PIN setup, but doesn't enforce it. A brand-new factory-fresh device exposes `/settings` to anyone on the LAN until a PIN is set. For personal use the guidance is sufficient; for commercial deployments this should be a hard server-side check (refuse access to `/` and redirect to `/welcome` until `settingsPIN` is non-empty). Implementation lives in `wled_server.cpp` — straightforward but invasive.
 - **`/reset` is unauthenticated** in upstream. Anyone on the LAN can reboot the device. Recommend a small follow-up to require PIN for `/reset` in WLED-Lite. Listed but not committed-to in this design.
 - **`/liveview` is unauthenticated** and shows a real-time LED preview. Probably fine to leave public — it doesn't change state — but consider hiding it from the user UI (don't link to it).
 - **WebSocket `/ws`** is unauthenticated state push/pull. Same shape as `/json` POST: state mutations OK without PIN, config mutations require PIN. No change.
