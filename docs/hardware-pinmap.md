@@ -2,6 +2,35 @@
 
 Task #7 of the [project plan](WLED-LITE-PLAN.md). The firmware-side pin assignments that drive the custom carrier-board layout. Build flags in `[env:xiao_esp32s3_plus]` apply these as the factory defaults; the admin UI (`/settings/leds` and `/settings/pin`) can override any of them per-device at runtime.
 
+## Quick reference for PCB design
+
+Use this table when laying out the carrier board — it's organized by signal role so you can answer "what GPIO do I route to my LED bus 3 connector?" in one glance.
+
+| Role | GPIO | XIAO pin | Header location | Notes for the carrier |
+|---|---|---|---|---|
+| **LED Bus 1** | 4 | D3 | Front | Add 3.3V→5V level shifter (e.g. 74AHCT245) before strip connector |
+| **LED Bus 2** | 7 | D8 | Front | Same |
+| **LED Bus 3** | 8 | D9 | Front | Same |
+| **LED Bus 4** | 9 | D10 | Front | Same |
+| **LED Bus 5** | 10 | (none) | Plus sub-header | Same. Plus pad — only accessible on the rear of the module |
+| **LED Bus 6** | 11 | (none) | Plus sub-header | Same |
+| **LED Bus 7** | 12 | (none) | Plus sub-header | Same |
+| **LED Bus 8** | 13 | (none) | Plus sub-header | Same |
+| **I2C SDA** | 5 | D4 | Front | Shared bus: INA219, OLED, future sensors. 4.7 kΩ pull-up to 3V3 on carrier (XIAO does not include one) |
+| **I2C SCL** | 6 | D5 | Front | Same — pull-up on carrier |
+| **Button 1** | 1 | D0 | Front | ADC1, but used here as digital input. Connect to GND through button; firmware uses `INPUT_PULLUP` |
+| **Button 2** | 2 | D1 | Front | Same |
+
+**Reserved / kept free** — do not route to anything on the carrier:
+
+| Pins | Reason |
+|---|---|
+| GPIO 43 (D6, TX), 44 (D7, RX) | Hardware UART — kept free so a USB-serial dongle can be plugged in for bench debug without contention |
+| GPIO 3 (D2) | Strapping pin (boot-mode select on ESP32-S3) |
+| GPIO 38–42 (Plus sub-header) | Expansion headroom — typical follow-up uses: status LED, relay output, additional buttons. Leave as breakout test points if board space allows |
+
+**Power**: the carrier supplies its own 5 V rail (sized for the LED strips). Tie carrier-side GND to XIAO GND. The XIAO's onboard 3V3 regulator handles only logic-level current — do **not** try to power LED strips from it.
+
 ## Module pinout (XIAO ESP32-S3 Plus)
 
 | Header | XIAO label | GPIO | Notes |
