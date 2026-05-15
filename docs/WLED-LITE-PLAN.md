@@ -101,7 +101,7 @@ WLED is **EUPL v1.2 or later** (copyleft). WLED-Lite must:
 |---|------|-------|
 | 1 | Set up fork remotes and initial push | `origin` → `MakingACompany/WLED-Lite`; `upstream` → `wled/WLED`. Initial push at `8e94cf5b`. |
 | 2 | Rebrand package.json | name=wled-lite, version=0.1.0-lite, license=EUPL-1.2, URLs updated. Commit `0bc6f68d`. |
-| 3 | Trim platformio.ini + WLED-Lite build flags | Cut from ~765 → ~260 lines. Kept only S3 envs: `xiao_esp32s3_plus` (new, primary), `esp32s3dev_16MB_opi` (parent + parity smoke test), `esp32s3dev_8MB_opi`, `esp32s3_4M_qspi`. Removed all ESP8266/classic-ESP32/S2/C3/WROOM-2/HUB75 envs and their shared sections. New env adds rebrand flags (`WLED_BRAND`, `WLED_PRODUCT_NAME`, `WLED_RELEASE_NAME=XIAO_ESP32S3_LITE`, `WLED_REPO`) and keeps USB-CDC enabled. On-device verification (USB-CDC programming, AP SSID `WLED-Lite-AP`, About page) deferred to first hardware bring-up. |
+| 3 | Trim platformio.ini + WLED-Lite build flags | Cut from ~765 → ~260 lines. Kept only S3 envs: `xiao_esp32s3_plus` (new, primary), `esp32s3dev_16MB_opi` (parent + parity smoke test), `esp32s3dev_8MB_opi`, `esp32s3_4M_qspi`. Removed all ESP8266/classic-ESP32/S2/C3/WROOM-2/HUB75 envs and their shared sections. New env adds rebrand flags (`WLED_BRAND`, `WLED_PRODUCT_NAME`, `WLED_RELEASE_NAME=XIAO_ESP32S3_LITE`, `WLED_REPO`) and keeps USB-CDC enabled. Pre-built binaries for all 4 S3 envs committed under `firmware/`, plus Windows re-compile docs at `docs/dev-setup-windows.md`. On-device verification (USB-CDC programming, AP SSID `WLED-Lite-AP`, About page) deferred to first hardware bring-up. Commit `4dbabf27`. |
 
 ### Next up
 | # | Task | Notes |
