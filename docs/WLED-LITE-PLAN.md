@@ -102,11 +102,11 @@ WLED is **EUPL v1.2 or later** (copyleft). WLED-Lite must:
 | 1 | Set up fork remotes and initial push | `origin` → `MakingACompany/WLED-Lite`; `upstream` → `wled/WLED`. Initial push at `8e94cf5b`. |
 | 2 | Rebrand package.json | name=wled-lite, version=0.1.0-lite, license=EUPL-1.2, URLs updated. Commit `0bc6f68d`. |
 | 3 | Trim platformio.ini + WLED-Lite build flags | Cut from ~765 → ~260 lines. Kept only S3 envs: `xiao_esp32s3_plus` (new, primary), `esp32s3dev_16MB_opi` (parent + parity smoke test), `esp32s3dev_8MB_opi`, `esp32s3_4M_qspi`. Removed all ESP8266/classic-ESP32/S2/C3/WROOM-2/HUB75 envs and their shared sections. New env adds rebrand flags (`WLED_BRAND`, `WLED_PRODUCT_NAME`, `WLED_RELEASE_NAME=XIAO_ESP32S3_LITE`, `WLED_REPO`) and keeps USB-CDC enabled. Pre-built binaries for all 4 S3 envs committed under `firmware/`, plus Windows re-compile docs at `docs/dev-setup-windows.md`. On-device verification (USB-CDC programming, AP SSID `WLED-Lite-AP`, About page) deferred to first hardware bring-up. Commit `4dbabf27`. |
+| 4 | Audit feature flags, decide keep/drop/admin-only | See [`docs/feature-flag-audit.md`](feature-flag-audit.md). Inventory + decision matrix for all `WLED_DISABLE_*` / `WLED_ENABLE_*` / `USERMOD_*` flags. Maintainer decisions captured: drop Alexa, drop Hue / Loxone / IR, drop 2D + pixelforge + 2D particles, drop pixart/pxmagic; keep MQTT compiled-in (hide UI in Task #5); enable DMX in+out + usermod page; keep Adalight (Improv onboarding); defer particle-1D to Task #6. No code changes in this commit — the `platformio.ini` delta block in the audit lands in a separate follow-up. |
 
 ### Next up
 | # | Task | Notes |
 |---|------|-------|
-| 4 | Audit feature flags, decide keep/drop/admin-only | Inventory `WLED_DISABLE_*` / `WLED_ENABLE_*` / `USERMOD_*`. Produce a decision matrix file. No code changes — just reading + a docs file. |
 | 5 | Design role-based UI split | Sketch user vs admin surfaces. Decide auth model (single admin password? per-user accounts? admin-only token-gated route?). Plan before touching `wled00/data/` HTML/JS. |
 | 6 | Trim effects to curated subset | Review FX.cpp / FX.h. Keep ~15–25 well-curated effects; preserve effect IDs of survivors so saved presets don't shift. |
 | 7 | Support 8 strips on configurable pins | Verify XIAO ESP32-S3 has enough RMT/I2S channels for 8 simultaneous outputs. Admin UI for per-pin assignment. Document the carrier-board pin map. |
