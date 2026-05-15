@@ -18,11 +18,19 @@ Two faces of the same firmware:
 
 **Primary MCU:** Seeed Studio XIAO ESP32-S3 Plus.
 
-The maintainer is standardizing on this module for multiple projects (lighted sign, ventilation controller, etc.), so WLED-Lite is being narrowed to just this module and close ESP32-S3 variants. Most other boards (ESP8266, classic ESP32, S2, C3, etc.) will be removed from `platformio.ini`.
+The maintainer is standardizing on this module for multiple projects (lighted sign, ventilation controller, etc.), so WLED-Lite is narrowed to ESP32-S3 only. All other targets (ESP8266, classic ESP32, ESP32-S2, ESP32-C3, HUB75 matrix panels, board-specific WROOM-2 dev kits) have been removed from `platformio.ini`. If S2/C3/C5/ATTiny or LED-matrix support is ever needed again, the corresponding env blocks can be lifted back from the upstream `wled/WLED` repo.
+
+The retained S3 envs are:
+- `xiao_esp32s3_plus` — primary target, extends `esp32s3dev_16MB_opi`
+- `esp32s3dev_16MB_opi` — 16MB flash + OPI PSRAM, also the parent of `xiao_esp32s3_plus`
+- `esp32s3dev_8MB_opi` — 8MB flash + OPI PSRAM
+- `esp32s3_4M_qspi` — 4MB flash + QSPI PSRAM (closest match to the smaller build that flashed successfully on prior bring-up attempts)
+
+Keeping a few S3 envs in parallel gives the maintainer something to A/B against when bringing up the XIAO Plus, since the obvious 16MB-OPI config did not boot on a prior attempt.
 
 A custom carrier board is being designed around the module with:
 - Up to **8 LED strip outputs** on independent GPIO pins
-- **I2C bus** shared by: INA219 current sensor, OLED display, I2C PWM driver (for computer fans in ventilation projects), other sensors
+- **I2C bus** shared by various components, including but not limited to: INA219 current sensor, OLED display, I2C PWM driver (for computer fans in ventilation projects), other sensors
 - **Configurable buttons** (short / long press), e.g. for the first deployment — a lighted sign:
   - btn1 short = effect cycle; btn1 long = enter brightness mode (subsequent short presses cycle brightness)
   - btn2 short = mode switch; btn2 long = off
@@ -34,7 +42,7 @@ A custom carrier board is being designed around the module with:
 
 ### Keep
 - Color picker, effect picker (curated subset), brightness, on/off schedule
-- WiFi onboarding (simple flow for non-technical users)
+- WiFi onboarding (simple flow for non-technical users), including Access Point initial configuration
 - DMX (admin only)
 - Multi-controller sync — both ESP-NOW and WiFi
 - Current capping — math-based (existing ABL) and INA219 I2C measured feedback
@@ -43,14 +51,15 @@ A custom carrier board is being designed around the module with:
 - Up to 8 strips per controller
 - USB programming/debug
 - Server settings, user administration, feature enable/disable (admin only)
+- Audio-reactive functionality - the maintainer has a project that may involve audio reactive effects and changes.
 
 ### Drop / simplify / make admin-only
-- Most MCU board targets (keep only XIAO ESP32-S3 Plus + close variants)
+- Most MCU board targets (keep only ESP32-S3 variants — XIAO Plus is primary; ESP8266, classic ESP32, ESP32-S2, ESP32-C3, HUB75 matrix, WROOM-2 dev kits all removed; lift back from upstream if needed)
 - ~80% of effects — aim for 15–25 curated effects, not the full ~180
+- ~90% of effect palettes - aim for 10-20 color palettes, not the full selection.
 - NTP / mDNS visibility — keep functionality, hide config from user view
 - Hue sync / Art-Net / MQTT — admin only (or remove if not used)
 - Complex network tuning surface
-- Audio-reactive (likely dropped — adds complexity)
 
 ---
 
@@ -92,11 +101,11 @@ WLED is **EUPL v1.2 or later** (copyleft). WLED-Lite must:
 |---|------|-------|
 | 1 | Set up fork remotes and initial push | `origin` → `MakingACompany/WLED-Lite`; `upstream` → `wled/WLED`. Initial push at `8e94cf5b`. |
 | 2 | Rebrand package.json | name=wled-lite, version=0.1.0-lite, license=EUPL-1.2, URLs updated. Commit `0bc6f68d`. |
+| 3 | Trim platformio.ini + WLED-Lite build flags | Cut from ~765 → ~260 lines. Kept only S3 envs: `xiao_esp32s3_plus` (new, primary), `esp32s3dev_16MB_opi` (parent + parity smoke test), `esp32s3dev_8MB_opi`, `esp32s3_4M_qspi`. Removed all ESP8266/classic-ESP32/S2/C3/WROOM-2/HUB75 envs and their shared sections. New env adds rebrand flags (`WLED_BRAND`, `WLED_PRODUCT_NAME`, `WLED_RELEASE_NAME=XIAO_ESP32S3_LITE`, `WLED_REPO`) and keeps USB-CDC enabled. On-device verification (USB-CDC programming, AP SSID `WLED-Lite-AP`, About page) deferred to first hardware bring-up. |
 
 ### Next up
 | # | Task | Notes |
 |---|------|-------|
-| 3 | Trim platformio.ini + WLED-Lite build flags | See **Task #3 detail** below. |
 | 4 | Audit feature flags, decide keep/drop/admin-only | Inventory `WLED_DISABLE_*` / `WLED_ENABLE_*` / `USERMOD_*`. Produce a decision matrix file. No code changes — just reading + a docs file. |
 | 5 | Design role-based UI split | Sketch user vs admin surfaces. Decide auth model (single admin password? per-user accounts? admin-only token-gated route?). Plan before touching `wled00/data/` HTML/JS. |
 | 6 | Trim effects to curated subset | Review FX.cpp / FX.h. Keep ~15–25 well-curated effects; preserve effect IDs of survivors so saved presets don't shift. |
@@ -106,45 +115,29 @@ WLED is **EUPL v1.2 or later** (copyleft). WLED-Lite must:
 | 10 | Multi-controller sync (ESP-NOW + WiFi) | Audit existing sync code. Keep both transports. Simplify pairing UI. |
 | 11 | Document upstream-sync workflow | Write `docs/upstream-sync.md`. Cadence (e.g. monthly), conflict-resolution approach. |
 
+
 ---
 
-## Task #3 detail — Trim platformio.ini
+## On-device verification still pending for Task #3
 
-Add a dedicated env block:
-
-```ini
-[env:xiao_esp32s3_plus]
-extends = env:esp32s3dev_16MB_opi  ; or the closest existing S3 env — verify
-board = seeed_xiao_esp32s3
-build_flags =
-  ${env:esp32s3dev_16MB_opi.build_flags}
-  -D WLED_BRAND="\"WLED-Lite\""
-  -D WLED_PRODUCT_NAME="\"WLED-Lite\""
-  -D WLED_RELEASE_NAME="\"XIAO_ESP32S3_LITE\""
-  -D WLED_VERSION=0.1.0-lite
-  -D WLED_REPO="\"MakingACompany/WLED-Lite\""
-  ; USB-CDC must stay enabled for programming + debug over USB-C
-  -D ARDUINO_USB_MODE=1
-  -D ARDUINO_USB_CDC_ON_BOOT=1
-```
-
-Reduce `default_envs` to just `xiao_esp32s3_plus` (and maybe one bare ESP32-S3 dev board for upstream-parity smoke tests). Remove ESP8266 envs entirely.
-
-Verify before merging:
-- `pio run -e xiao_esp32s3_plus` succeeds
-- USB-CDC programming works
-- Default AP SSID becomes `WLED-Lite-AP`
-- About page reflects new product name
+Compile-time build of `xiao_esp32s3_plus` was verified (config parses; full `pio run` requires PlatformIO ≥ 6 — the apt-shipped 4.3.4 is too old for the Tasmota platform-espressif32 2024.06 fork that upstream pins to). Hardware checks queued for first XIAO Plus bring-up:
+- USB-CDC programming + serial debug over USB-C
+- Default AP SSID = `WLED-Lite-AP`
+- About page reflects new product / release name
+- A/B the four S3 envs against the actual board to find which boots reliably (prior bring-up attempt: the obvious 16MB env did not work; a smaller ~4MB build did)
 
 ---
 
 ## Repo / dev setup notes
 
-- Working directory: `~/Code/WLED/` (on work Linux machine)
+- Working directory: `~/Code/WLED-Lite/` (on work Linux machine)
 - Dev tools: VSCode + PlatformIO and/or ESP-IDF extensions
 - GitHub auth on this machine: HTTPS with PAT, `credential.helper=store`, file `~/.git-credentials` mode 600
 - Per-repo commit identity: `Aaron Loar <1115581+aaronloar@users.noreply.github.com>` (set with `git config user.email/user.name`, not global)
 - Working from home will use a different machine — clone fresh and configure the same PAT + commit identity, or generate a new PAT scoped to this repo.
+- **PlatformIO version:** the Tasmota platform-espressif32 fork pinned by upstream WLED requires PlatformIO ≥ 6. Ubuntu's `apt`-shipped `platformio` (4.3.4 on 22.04) is too old and will fail with "Unknown development platform 'espressif32'". On this machine PIO 6.x is installed under `~/.local/bin/pio` via `pip install --user platformio`; VSCode's PlatformIO extension brings its own bundled PIO and works fine.
+- **Pre-built firmware** is checked in under `firmware/<env>/` for each S3 env — `firmware.bin` for OTA and `merged-flash.bin` for first-time USB flash. See [`firmware/README.md`](../firmware/README.md). Re-generate after a meaningful rebuild by running all four envs and re-running `esptool merge_bin`.
+- **Windows re-compile / flash:** see [`docs/dev-setup-windows.md`](dev-setup-windows.md).
 
 ---
 
