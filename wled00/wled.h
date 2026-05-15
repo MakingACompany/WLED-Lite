@@ -664,8 +664,17 @@ WLED_GLOBAL bool disablePullUp                                _INIT(false);
 WLED_GLOBAL byte touchThreshold                               _INIT(TOUCH_THRESHOLD);
 
 // notifications
+#ifdef WLED_LITE_SYNC_DEFAULTS
+// WLED-Lite: master sync ON by default so paired devices on the same WiFi
+// with the (already-default) sync group 0x01 just work out of the box.
+// ESP-NOW remains opt-in per device (security; radio power cost).
+// See docs/multi-controller-sync.md.
+WLED_GLOBAL bool sendNotifications    _INIT(true);            // master notification switch
+WLED_GLOBAL bool sendNotificationsRT  _INIT(true);            // master notification switch (runtime)
+#else
 WLED_GLOBAL bool sendNotifications    _INIT(false);           // master notification switch
 WLED_GLOBAL bool sendNotificationsRT  _INIT(false);           // master notification switch (runtime)
+#endif
 WLED_GLOBAL unsigned long notificationSentTime _INIT(0);
 WLED_GLOBAL byte notificationSentCallMode _INIT(CALL_MODE_INIT);
 WLED_GLOBAL uint8_t notificationCount _INIT(0);
