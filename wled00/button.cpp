@@ -15,13 +15,35 @@
 static const char _mqtt_topic_button[] PROGMEM = "%s/button/%d";  // optimize flash usage
 static bool buttonBriDirection = false; // true: increase brightness, false: decrease brightness
 
+#ifdef WLED_LITE_BUTTON_BRIGHTNESS_MODE
+  #include "wled_lite_config.h"
+  #include "wled_lite_brightness.h"
+#endif
+
 void shortPressAction(uint8_t b)
 {
   if (!buttons[b].macroButton) {
+#ifdef WLED_LITE_BUTTON_BRIGHTNESS_MODE
+    // WLED-Lite custom defaults. See docs/button-bindings.md.
+    //   btn[BRI]  short, in mode:    advance brightness level
+    //   btn[BRI]  short, default:    cycle effect
+    //   btn[OFF]  short:             cycle palette
+    if (b == WLED_LITE_BRI_BTN_INDEX && WLEDLiteBrightness::isActive()) {
+      WLEDLiteBrightness::advance();
+    } else if (b == WLED_LITE_BRI_BTN_INDEX) {
+      ++effectCurrent %= strip.getModeCount();
+      stateChanged = true;
+      colorUpdated(CALL_MODE_BUTTON);
+    } else if (b == WLED_LITE_OFF_BTN_INDEX) {
+      ++effectPalette %= getPaletteCount();
+      colorUpdated(CALL_MODE_BUTTON);
+    }
+#else
     switch (b) {
       case 0: toggleOnOff(); stateUpdated(CALL_MODE_BUTTON); break;
       case 1: ++effectCurrent %= strip.getModeCount(); stateChanged = true; colorUpdated(CALL_MODE_BUTTON); break;
     }
+#endif
   } else {
     applyPreset(buttons[b].macroButton, CALL_MODE_BUTTON_PRESET);
   }
@@ -39,9 +61,26 @@ void shortPressAction(uint8_t b)
 void longPressAction(uint8_t b)
 {
   if (!buttons[b].macroLongPress) {
+#ifdef WLED_LITE_BUTTON_BRIGHTNESS_MODE
+    // WLED-Lite custom defaults. See docs/button-bindings.md.
+    //   btn[BRI]  long:  toggle brightness mode
+    //   btn[OFF]  long:  power off (if not already off). Gated by `if (bri)`
+    //                    so upstream's repeating-long-press fires once cleanly.
+    if (b == WLED_LITE_BRI_BTN_INDEX) {
+      WLEDLiteBrightness::toggle();
+    } else if (b == WLED_LITE_OFF_BTN_INDEX) {
+      // Power toggle. Upstream's handleButton() repeats long-press for button
+      // index > 0 every ~400ms while held; check !longPressed so we only fire
+      // on the first detection per hold (would otherwise flap on/off).
+      if (!buttons[b].longPressed) {
+        toggleOnOff();
+        stateUpdated(CALL_MODE_BUTTON);
+      }
+    }
+#else
     switch (b) {
       case 0: setRandomColor(colPri); colorUpdated(CALL_MODE_BUTTON); break;
-      case 1: 
+      case 1:
         if(buttonBriDirection) {
           if (bri == 255) break; // avoid unnecessary updates to brightness
           if (bri >= 255 - WLED_LONG_BRI_STEPS) bri = 255;
@@ -51,10 +90,11 @@ void longPressAction(uint8_t b)
           if (bri <= WLED_LONG_BRI_STEPS) bri = 1;
           else bri -= WLED_LONG_BRI_STEPS;
         }
-        stateUpdated(CALL_MODE_BUTTON); 
-        buttons[b].pressedTime = millis();         
+        stateUpdated(CALL_MODE_BUTTON);
+        buttons[b].pressedTime = millis();
         break; // repeatable action
     }
+#endif
   } else {
     applyPreset(buttons[b].macroLongPress, CALL_MODE_BUTTON_PRESET);
   }
@@ -260,6 +300,10 @@ void handleButton()
   static unsigned long lastAnalogRead = 0UL;
   static unsigned long lastRun = 0UL;
   unsigned long now = millis();
+
+#ifdef WLED_LITE_BUTTON_BRIGHTNESS_MODE
+  WLEDLiteBrightness::tick(); // auto-exits brightness mode on idle timeout
+#endif
 
   if (strip.isUpdating() && (now - lastRun < ANALOG_BTN_READ_CYCLE+1)) return; // don't interfere with strip update (unless strip is updating continuously, e.g. very long strips)
   lastRun = now;
