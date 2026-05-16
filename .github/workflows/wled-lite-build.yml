@@ -1,0 +1,112 @@
+name: WLED-Lite Build
+
+# Builds the three WLED-Lite size variants on every push to main and uploads
+# the resulting binaries as workflow artifacts. Lets the maintainer always
+# download a known-good build from GitHub Actions even when the checked-in
+# `firmware/` directory hasn't been refreshed yet.
+#
+# This is separate from upstream WLED's `.github/workflows/build.yml`
+# (workflow_call-only). Keeping them split means an upstream-merge churn in
+# build.yml doesn't disturb our CI.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'wled00/**'
+      - 'usermods/**'
+      - 'platformio.ini'
+      - 'package.json'
+      - 'requirements.txt'
+      - '.github/workflows/wled-lite-build.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.environment }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment:
+          - xiao_esp32s3_plus
+          - xiao_esp32s3_plus_8MB
+          - xiao_esp32s3_plus_4M
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install npm deps (UI build pipeline)
+        run: npm ci
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install PlatformIO
+        run: pip install -r requirements.txt
+
+      - name: Cache PlatformIO platform + library
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio/.cache
+            ~/.buildcache
+          key: pio-${{ runner.os }}-${{ matrix.environment }}-${{ hashFiles('platformio.ini') }}-${{ hashFiles('wled00/**', 'usermods/**') }}
+          restore-keys: |
+            pio-${{ runner.os }}-${{ matrix.environment }}-${{ hashFiles('platformio.ini') }}-
+            pio-${{ runner.os }}-${{ matrix.environment }}-
+
+      - name: Build
+        run: pio run -e ${{ matrix.environment }}
+
+      - name: Produce merged-flash.bin (single-image at 0x0)
+        run: |
+          BUILD_DIR=.pio/build/${{ matrix.environment }}
+          BOOT_APP0=~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin
+          case "${{ matrix.environment }}" in
+            xiao_esp32s3_plus)     FLASH_SIZE=16MB ;;
+            xiao_esp32s3_plus_8MB) FLASH_SIZE=8MB  ;;
+            xiao_esp32s3_plus_4M)  FLASH_SIZE=4MB  ;;
+            *)                     FLASH_SIZE=16MB ;;
+          esac
+          python -m esptool --chip esp32s3 merge_bin \
+            -o $BUILD_DIR/merged-flash.bin \
+            --flash_mode qio --flash_size $FLASH_SIZE \
+            0x0     $BUILD_DIR/bootloader.bin \
+            0x8000  $BUILD_DIR/partitions.bin \
+            0xe000  $BOOT_APP0 \
+            0x10000 $BUILD_DIR/firmware.bin
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.environment }}
+          path: |
+            .pio/build/${{ matrix.environment }}/firmware.bin
+            .pio/build/${{ matrix.environment }}/merged-flash.bin
+            build_output/release/*.bin
+          if-no-files-found: error
+          retention-days: 30
+
+  smoke:
+    name: Smoke check (config + flag invariants)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify WLED-Lite invariants
+        run: ./tools/post-merge-check.sh

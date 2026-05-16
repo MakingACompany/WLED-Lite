@@ -774,6 +774,23 @@ void serveSettings(AsyncWebServerRequest* request, bool post) {
   //else if (url.indexOf("/edit")   >= 0) subPage = 10;
   else subPage = SUBPAGE_WELCOME;
 
+#ifdef WLED_LITE_SECURITY_GATES
+  // WLED-Lite: on a factory-state device (no PIN yet) only WiFi and Security
+  // sub-pages are reachable -- forces the maintainer through the welcome
+  // wizard before any other admin surface is exposed. End user never sees
+  // this gate. Infrastructure sub-pages (CSS / JS / PINREQ / LOCK /
+  // WELCOME -- all >= SUBPAGE_LOCK) stay reachable; the hub (SUBPAGE_MENU)
+  // stays reachable so an admin can see what's there even pre-PIN.
+  if (strlen(settingsPIN) == 0 &&
+      subPage > SUBPAGE_MENU &&
+      subPage != SUBPAGE_WIFI &&
+      subPage != SUBPAGE_SEC &&
+      subPage < SUBPAGE_LOCK) {
+    serveMessage(request, 401, FPSTR(s_accessdenied),
+                 F("Set an admin PIN first (Settings &gt; Security)."), 254);
+    return;
+  }
+#endif
   bool pinRequired = !correctPIN && strlen(settingsPIN) > 0 && (subPage > (WLED_WIFI_CONFIGURED ? SUBPAGE_MENU : SUBPAGE_WIFI) && subPage < SUBPAGE_LOCK);
   if (pinRequired) {
     originalSubPage = subPage;

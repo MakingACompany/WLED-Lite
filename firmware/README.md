@@ -1,63 +1,51 @@
 # WLED-Lite — Pre-built Firmware
 
-Pre-built ESP32-S3 binaries are checked in here so a freshly cloned repo can flash a board without re-running PlatformIO. If you need a build for a different config or a newer commit, recompile — see [`../docs/dev-setup-windows.md`](../docs/dev-setup-windows.md).
+Three pre-built WLED-Lite binaries are checked in for the Seeed Studio XIAO ESP32-S3 Plus. They all run the **same WLED-Lite firmware** (slim UI, curated effects, brightness-mode buttons, INA219 safety net, security gates, etc.) — only the chip-side **memory configuration** differs.
 
-## Which directory should I use?
+If you just want to flash and go, see [`../docs/flash-from-windows.md`](../docs/flash-from-windows.md).
 
-| Directory | Board / chip | Flash | PSRAM | Notes |
+## Which variant should I flash?
+
+| Directory | Flash | PSRAM mode | WLED_RELEASE_NAME | When to use |
 |---|---|---|---|---|
-| `xiao_esp32s3_plus/` | **Seeed XIAO ESP32-S3 Plus** | 16 MB | 8 MB OPI | **Primary target.** WLED_RELEASE_NAME = `XIAO_ESP32S3_LITE`. |
-| `esp32s3dev_16MB_opi/` | Generic ESP32-S3 dev board | 16 MB | 8 MB OPI | Same hardware spec as XIAO Plus, vanilla board pinout. Useful as a fallback / parity check. |
-| `esp32s3dev_8MB_opi/` | Generic ESP32-S3 dev board | 8 MB | 8 MB OPI | Try this if 16MB doesn't boot on your XIAO. |
-| `esp32s3_4M_qspi/` | LOLIN S3 Mini / 4MB-class S3 | 4 MB | 2 MB QSPI | Smallest variant. The build that flashed successfully on a prior XIAO bring-up attempt; useful as an A/B reference. |
+| `xiao_esp32s3_plus/` | 16 MB | OPI (qio_opi) | `XIAO_ESP32S3_LITE` | **Try this first.** Standard XIAO ESP32-S3 Plus config — 16 MB flash, octal PSRAM. |
+| `xiao_esp32s3_plus_8MB/` | 8 MB | OPI (qio_opi) | `XIAO_LITE_8MB` | **Try second** if 16 MB doesn't boot. Same PSRAM mode but smaller flash partition — narrows the issue to flash sizing. |
+| `xiao_esp32s3_plus_4M/` | 4 MB | QSPI (qio_qspi) | `XIAO_LITE_4M` | **Try third** if 8 MB also fails. Switches PSRAM mode to QSPI — the prior bring-up attempt that booted successfully was a ~4 MB build, so this matches that working configuration. |
 
-Each directory contains:
-- **`merged-flash.bin`** — single-image flash for first-time programming (bootloader + partitions + OTA-data + app, all in one file, addressed at `0x0`).
-- **`firmware.bin`** — app-only image. Use this for OTA updates via the WLED web UI once the device is already running WLED-Lite.
+> All three target the **same physical board** (`seeed_xiao_esp32s3`). They differ in how the firmware *talks to* the chip's flash + PSRAM. The XIAO Plus hardware itself is fixed (16 MB + 8 MB OPI), but a smaller-config build will still boot on bigger hardware (it just doesn't use all the available flash/PSRAM).
 
-## First-time flash (Windows, esptool)
+> **OTA caveat:** each variant has a distinct `WLED_RELEASE_NAME`, which means **OTA updates won't cross between variants.** If you flash `XIAO_LITE_4M` first and decide to OTA up to `XIAO_ESP32S3_LITE`, the device refuses. Re-flash over USB to switch variants.
 
-Install `esptool` once:
+## What's in each directory
+
+- `firmware.bin` — app image only. For **OTA updates** via the WLED web UI after the device is already running WLED-Lite.
+- `merged-flash.bin` — single-file image (bootloader + partitions + OTA-data + app, addressed at `0x0`). For **first-time USB flash** with `esptool`.
+
+## Quick flash (Windows)
+
+Full instructions in [`../docs/flash-from-windows.md`](../docs/flash-from-windows.md). The short version:
 
 ```
 python -m pip install --user esptool
-```
-
-Put the XIAO into download mode (hold the BOOT button while plugging in USB-C, or press BOOT then briefly press RESET while powered). Find the COM port in Device Manager. Then:
-
-```
 python -m esptool --chip esp32s3 --port COM3 --baud 460800 write_flash 0x0 firmware\xiao_esp32s3_plus\merged-flash.bin
 ```
 
-Replace `COM3` with the actual port and the path with the env directory you want.
-
-After flashing, unplug/replug. The device boots WLED-Lite and exposes an AP named `WLED-Lite-AP` on first run (no saved WiFi).
-
-## First-time flash (PlatformIO Upload)
-
-If you've already done a local `pio run -e xiao_esp32s3_plus`, the easiest path is:
-
-```
-pio run -e xiao_esp32s3_plus -t upload --upload-port COM3
-```
-
-PlatformIO handles the bootloader/partitions/app addresses itself.
-
-## OTA update (after first flash)
-
-Open the device's web UI → **Config → Security & Updates → Manual OTA Update** → upload `<env>/firmware.bin`.
-
-OTA only works between firmwares with the **same `WLED_RELEASE_NAME`**. The XIAO Plus build's release name is `XIAO_ESP32S3_LITE`; the generic dev envs each use their own name (e.g. `ESP32-S3_16MB_opi`). Cross-release OTA is refused by design — re-flash via USB to switch.
+Replace `COM3` with the actual COM port from Device Manager.
 
 ## What's baked into these binaries
 
-- **Version:** `0.1.0-lite` (from `package.json`).
+- **Version:** `0.1.0-lite` (from `package.json`)
 - **Brand:** `WLED-Lite` (overrides upstream `WLED`). Default AP SSID becomes `WLED-Lite-AP`.
-- **Build commit:** see `git log` of this commit — the binaries match this tree exactly. Re-build to capture later commits.
+- **Build commit:** matches the commit history of this checkout — re-build to capture later commits.
+
+After flashing and connecting WiFi, the welcome wizard walks you through the three-step setup: WiFi → Set admin PIN → Use your sign. Until the admin PIN is set, `/` redirects to `/welcome` (so a fresh device can't be misused on a shared network).
 
 ## Re-generating these files
 
 ```
-pio run -e xiao_esp32s3_plus -e esp32s3dev_16MB_opi -e esp32s3dev_8MB_opi -e esp32s3_4M_qspi
-# Then re-run the merge_bin step documented in docs/dev-setup-windows.md
+pio run -e xiao_esp32s3_plus -e xiao_esp32s3_plus_8MB -e xiao_esp32s3_plus_4M
+# Then re-run the merge_bin step per docs/dev-setup-windows.md, with the correct
+# --flash_size per variant (16MB / 8MB / 4MB).
 ```
+
+The CI workflow (`.github/workflows/wled-lite-build.yml`) also produces these as downloadable artifacts on every push to `main`.

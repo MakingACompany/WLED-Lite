@@ -31,14 +31,16 @@ cd WLED-Lite
 
 ## 3. Build
 
-The default-build environments are `xiao_esp32s3_plus` and `esp32s3dev_16MB_opi`:
+The default-build environments are the three WLED-Lite size variants — all target the **same physical board** (`seeed_xiao_esp32s3`) but differ in flash partition / PSRAM mode for A/B-testing against actual hardware:
 
 ```powershell
-pio run                              # builds both default envs
-pio run -e xiao_esp32s3_plus         # build just the primary target
+pio run                              # builds all 3 WLED-Lite variants
+pio run -e xiao_esp32s3_plus         # 16 MB + OPI PSRAM (primary)
+pio run -e xiao_esp32s3_plus_8MB     # 8 MB + OPI PSRAM (smaller flash)
+pio run -e xiao_esp32s3_plus_4M      # 4 MB + QSPI PSRAM (smaller, different PSRAM mode)
 ```
 
-Other available envs (for A/B-testing against the XIAO Plus hardware): `esp32s3dev_8MB_opi`, `esp32s3_4M_qspi`.
+The original stock-WLED parity envs (`esp32s3dev_16MB_opi`, `esp32s3dev_8MB_opi`, `esp32s3_4M_qspi`) are still defined for upstream-merge smoke tests but are no longer in `default_envs`.
 
 The first build downloads the Tasmota platform fork, the ESP32-S3 toolchain, and the lib_deps from GitHub — expect 5–15 minutes. Subsequent builds are ~30 seconds with the build cache.
 
