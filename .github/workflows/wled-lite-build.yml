@@ -83,9 +83,15 @@ jobs:
             xiao_esp32s3_plus_4M)  FLASH_SIZE=4MB  ;;
             *)                     FLASH_SIZE=16MB ;;
           esac
+          # --flash_mode dio: matches the prebuilt bootloader's boot-time mode.
+          # Using qio here corrupts the image header byte 2 and causes the ROM
+          # bootloader to attempt QIO flash access before the second-stage
+          # bootloader has initialized the flash, which Puya flash chips can't
+          # handle. The runtime upgrade to QIO is handled by the second-stage
+          # bootloader from board_build.flash_mode in platformio.ini.
           python -m esptool --chip esp32s3 merge_bin \
             -o $BUILD_DIR/merged-flash.bin \
-            --flash_mode qio --flash_size $FLASH_SIZE \
+            --flash_mode dio --flash_size $FLASH_SIZE \
             0x0     $BUILD_DIR/bootloader.bin \
             0x8000  $BUILD_DIR/partitions.bin \
             0xe000  $BOOT_APP0 \

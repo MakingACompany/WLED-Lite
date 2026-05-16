@@ -148,7 +148,7 @@ Only for `xiao_esp32s3_plus` (the others are smoke-test envs without committed b
 cp .pio/build/xiao_esp32s3_plus/firmware.bin firmware/xiao_esp32s3_plus/firmware.bin
 BOOT_APP0=~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin
 python3 ~/.platformio/packages/tool-esptoolpy/esptool.py --chip esp32s3 merge_bin \
-  -o firmware/xiao_esp32s3_plus/merged-flash.bin --flash_mode qio --flash_size 16MB \
+  -o firmware/xiao_esp32s3_plus/merged-flash.bin --flash_mode dio --flash_size 16MB \
   0x0     .pio/build/xiao_esp32s3_plus/bootloader.bin \
   0x8000  .pio/build/xiao_esp32s3_plus/partitions.bin \
   0xe000  $BOOT_APP0 \

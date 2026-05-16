@@ -61,7 +61,7 @@ Find the COM port in **Device Manager → Ports (COM & LPT)**. If the XIAO doesn
 To produce a single merged image (matches what's in `firmware/<env>/merged-flash.bin`), use `esptool merge_bin`:
 
 ```powershell
-python -m esptool --chip esp32s3 merge_bin -o merged-flash.bin --flash_mode qio --flash_size 16MB `
+python -m esptool --chip esp32s3 merge_bin -o merged-flash.bin --flash_mode dio --flash_size 16MB `
   0x0     .pio\build\xiao_esp32s3_plus\bootloader.bin `
   0x8000  .pio\build\xiao_esp32s3_plus\partitions.bin `
   0xe000  $env:USERPROFILE\.platformio\packages\framework-arduinoespressif32\tools\partitions\boot_app0.bin `

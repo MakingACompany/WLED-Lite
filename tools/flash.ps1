@@ -18,16 +18,16 @@ param(
   [Parameter(Mandatory=$true)]
   [string]$Port,
   [string]$Env = 'xiao_esp32s3_plus',
-  [ValidateSet('piecemeal','merged')]
-  [string]$Method = 'piecemeal',
+  [ValidateSet('merged','piecemeal')]
+  [string]$Method = 'merged',
   [int]$Baud = 460800
 )
-# Default is piecemeal. merged-flash.bin has been observed to boot-loop on
-# real XIAO Plus hardware for this build configuration even though piecemeal
-# of the SAME bins works fine. Root cause not yet isolated -- likely
-# esptool merge_bin's flash-params header rewriting interacting badly with
-# this specific bootloader/PSRAM combo. Piecemeal sidesteps it entirely
-# and matches what install.wled.me's web installer does internally.
+# Default is merged (single-file flash). The prior boot-loop issue was tracked
+# down to merge_bin being invoked with --flash_mode qio, which rewrites
+# image-header byte 2 in a way the ROM bootloader can't tolerate on Puya
+# flash chips (boot-time access must be DIO; the second-stage bootloader
+# handles the upgrade to QIO at runtime). The fix is `--flash_mode dio` at
+# merge time. Both methods now work; merged is simpler.
 
 $ErrorActionPreference = 'Stop'
 $dir = Join-Path $PSScriptRoot "..\firmware\$Env"
