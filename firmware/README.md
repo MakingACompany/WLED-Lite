@@ -27,7 +27,7 @@ Full instructions in [`../docs/flash-from-windows.md`](../docs/flash-from-window
 
 ```
 python -m pip install --user esptool
-python -m esptool --chip esp32s3 --port COM3 --baud 460800 write_flash 0x0 firmware\xiao_esp32s3_plus\merged-flash.bin
+python -m esptool --chip esp32s3 --port COM3 --baud 460800 write-flash 0x0 firmware\xiao_esp32s3_plus\merged-flash.bin
 ```
 
 Replace `COM3` with the actual COM port from Device Manager.
@@ -44,8 +44,8 @@ After flashing and connecting WiFi, the welcome wizard walks you through the thr
 
 ```
 pio run -e xiao_esp32s3_plus -e xiao_esp32s3_plus_8MB -e xiao_esp32s3_plus_4M
-# Then re-run the merge_bin step per docs/dev-setup-windows.md, with the correct
-# --flash_size per variant (16MB / 8MB / 4MB).
+# Then re-run the merge-bin step per docs/dev-setup-windows.md, with the correct
+# --flash-size per variant (16MB / 8MB / 4MB).
 ```
 
 The CI workflow (`.github/workflows/wled-lite-build.yml`) also produces these as downloadable artifacts on every push to `main`.

@@ -21,7 +21,7 @@ The XIAO boots WLED-Lite within a few seconds. It exposes an access point named 
 > **PowerShell execution policy**: if PowerShell refuses to run the script, run this once and try again:
 > `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
 
-> **Background**: an earlier version of `merge_bin` invocation used `--flash_mode qio` which corrupted image-header byte 2 (Puya flash chips can't access flash in QIO before the second-stage bootloader initializes it). Fixed by switching to `--flash_mode dio` (matching the prebuilt bootloader's boot-time mode). Both merged and piecemeal flash methods now work; merged is simpler and is the default.
+> **Background**: an earlier version of `merge-bin` invocation used `--flash-mode qio` which corrupted image-header byte 2 (Puya flash chips can't access flash in QIO before the second-stage bootloader initializes it). Fixed by switching to `--flash-mode dio` (matching the prebuilt bootloader's boot-time mode). Both merged and piecemeal flash methods now work; merged is simpler and is the default.
 
 ---
 
@@ -102,7 +102,7 @@ See [`../firmware/README.md`](../firmware/README.md) for the full comparison.
 Single command, replace `COM3` with your actual port:
 
 ```powershell
-python -m esptool --chip esp32s3 --port COM3 --baud 460800 write_flash 0x0 firmware\xiao_esp32s3_plus\merged-flash.bin
+python -m esptool --chip esp32s3 --port COM3 --baud 460800 write-flash 0x0 firmware\xiao_esp32s3_plus\merged-flash.bin
 ```
 
 esptool will:
@@ -174,7 +174,7 @@ Another program has it open. Same fix as above.
 If a previous bad flash left the chip unresponsive:
 
 1. Hold **BOOT** while plugging in USB-C.
-2. Run `python -m esptool --chip esp32s3 erase_flash` (will wipe everything to factory-empty state).
+2. Run `python -m esptool --chip esp32s3 erase-flash` (will wipe everything to factory-empty state).
 3. Then re-flash per Step 5.
 
 ### Reset to factory state (after a successful WLED-Lite install)

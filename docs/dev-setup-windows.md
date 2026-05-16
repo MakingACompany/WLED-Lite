@@ -58,10 +58,10 @@ pio run -e xiao_esp32s3_plus -t upload --upload-port COM3
 
 Find the COM port in **Device Manager → Ports (COM & LPT)**. If the XIAO doesn't enter download mode automatically, hold BOOT while plugging in USB-C (or press BOOT + briefly press RESET while powered).
 
-To produce a single merged image (matches what's in `firmware/<env>/merged-flash.bin`), use `esptool merge_bin`:
+To produce a single merged image (matches what's in `firmware/<env>/merged-flash.bin`), use `esptool merge-bin`:
 
 ```powershell
-python -m esptool --chip esp32s3 merge_bin -o merged-flash.bin --flash_mode dio --flash_size 16MB `
+python -m esptool --chip esp32s3 merge-bin -o merged-flash.bin --flash-mode dio --flash-size 16MB `
   0x0     .pio\build\xiao_esp32s3_plus\bootloader.bin `
   0x8000  .pio\build\xiao_esp32s3_plus\partitions.bin `
   0xe000  $env:USERPROFILE\.platformio\packages\framework-arduinoespressif32\tools\partitions\boot_app0.bin `
@@ -71,10 +71,10 @@ python -m esptool --chip esp32s3 merge_bin -o merged-flash.bin --flash_mode dio 
 Then flash:
 
 ```powershell
-python -m esptool --chip esp32s3 --port COM3 --baud 460800 write_flash 0x0 merged-flash.bin
+python -m esptool --chip esp32s3 --port COM3 --baud 460800 write-flash 0x0 merged-flash.bin
 ```
 
-Adjust `--flash_size` per env: `16MB` for `xiao_esp32s3_plus` and `esp32s3dev_16MB_opi`, `8MB` for `esp32s3dev_8MB_opi`, `4MB` for `esp32s3_4M_qspi`.
+Adjust `--flash-size` per env: `16MB` for `xiao_esp32s3_plus` and `esp32s3dev_16MB_opi`, `8MB` for `esp32s3dev_8MB_opi`, `4MB` for `esp32s3_4M_qspi`.
 
 ## 5. Serial console
 
@@ -91,7 +91,7 @@ After building, copy the new artifacts in:
 ```powershell
 foreach ($env in 'xiao_esp32s3_plus','esp32s3dev_16MB_opi','esp32s3dev_8MB_opi','esp32s3_4M_qspi') {
   Copy-Item .pio\build\$env\firmware.bin firmware\$env\firmware.bin
-  # then run merge_bin per step 4 to refresh merged-flash.bin
+  # then run merge-bin per step 4 to refresh merged-flash.bin
 }
 ```
 

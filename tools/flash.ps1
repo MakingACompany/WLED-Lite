@@ -10,7 +10,7 @@
 #   Method "piecemeal"       flashes bootloader+partitions+boot_app0+firmware at separate addresses
 #                            (matches what install.wled.me does internally)
 #
-# Always does an `erase_flash` first.
+# Always does an `erase-flash` first.
 #
 # Requires Python + esptool: `python -m pip install --user esptool`
 
@@ -23,10 +23,10 @@ param(
   [int]$Baud = 460800
 )
 # Default is merged (single-file flash). The prior boot-loop issue was tracked
-# down to merge_bin being invoked with --flash_mode qio, which rewrites
+# down to merge-bin being invoked with --flash-mode qio, which rewrites
 # image-header byte 2 in a way the ROM bootloader can't tolerate on Puya
 # flash chips (boot-time access must be DIO; the second-stage bootloader
-# handles the upgrade to QIO at runtime). The fix is `--flash_mode dio` at
+# handles the upgrade to QIO at runtime). The fix is `--flash-mode dio` at
 # merge time. Both methods now work; merged is simpler.
 
 $ErrorActionPreference = 'Stop'
@@ -39,13 +39,13 @@ if (-not (Test-Path $dir)) {
 }
 
 Write-Host "==> Erasing flash on $Port..." -ForegroundColor Cyan
-python -m esptool --chip esp32s3 --port $Port erase_flash
-if ($LASTEXITCODE -ne 0) { Write-Host "erase_flash failed" -ForegroundColor Red; exit 1 }
+python -m esptool --chip esp32s3 --port $Port erase-flash
+if ($LASTEXITCODE -ne 0) { Write-Host "erase-flash failed" -ForegroundColor Red; exit 1 }
 
 if ($Method -eq 'merged') {
   $merged = Join-Path $dir 'merged-flash.bin'
   Write-Host "`n==> Flashing merged image: $merged" -ForegroundColor Cyan
-  python -m esptool --chip esp32s3 --port $Port --baud $Baud write_flash 0x0 $merged
+  python -m esptool --chip esp32s3 --port $Port --baud $Baud write-flash 0x0 $merged
 } else {
   $boot = Join-Path $dir 'bootloader.bin'
   $part = Join-Path $dir 'partitions.bin'
@@ -58,7 +58,7 @@ if ($Method -eq 'merged') {
     }
   }
   Write-Host "`n==> Flashing piecemeal: bootloader + partitions + boot_app0 + firmware" -ForegroundColor Cyan
-  python -m esptool --chip esp32s3 --port $Port --baud $Baud write_flash `
+  python -m esptool --chip esp32s3 --port $Port --baud $Baud write-flash `
     0x0 $boot `
     0x8000 $part `
     0xe000 $app0 `

@@ -134,7 +134,7 @@ Compile-time build of `xiao_esp32s3_plus` was verified (config parses; full `pio
 - Per-repo commit identity: `Aaron Loar <1115581+aaronloar@users.noreply.github.com>` (set with `git config user.email/user.name`, not global)
 - Working from home will use a different machine — clone fresh and configure the same PAT + commit identity, or generate a new PAT scoped to this repo.
 - **PlatformIO version:** the Tasmota platform-espressif32 fork pinned by upstream WLED requires PlatformIO ≥ 6. Ubuntu's `apt`-shipped `platformio` (4.3.4 on 22.04) is too old and will fail with "Unknown development platform 'espressif32'". On this machine PIO 6.x is installed under `~/.local/bin/pio` via `pip install --user platformio`; VSCode's PlatformIO extension brings its own bundled PIO and works fine.
-- **Pre-built firmware** is checked in under `firmware/<env>/` for each S3 env — `firmware.bin` for OTA and `merged-flash.bin` for first-time USB flash. See [`firmware/README.md`](../firmware/README.md). Re-generate after a meaningful rebuild by running all four envs and re-running `esptool merge_bin`.
+- **Pre-built firmware** is checked in under `firmware/<env>/` for each S3 env — `firmware.bin` for OTA and `merged-flash.bin` for first-time USB flash. See [`firmware/README.md`](../firmware/README.md). Re-generate after a meaningful rebuild by running all four envs and re-running `esptool merge-bin`.
 - **Windows re-compile / flash:** see [`docs/dev-setup-windows.md`](dev-setup-windows.md).
 
 ---
