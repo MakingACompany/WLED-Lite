@@ -13,10 +13,15 @@ git clone https://github.com/MakingACompany/WLED-Lite.git
 cd WLED-Lite
 python -m pip install --user esptool
 # Find the COM port of your XIAO in Device Manager. Then:
-python -m esptool --chip esp32s3 --port COM3 --baud 460800 write_flash 0x0 firmware\xiao_esp32s3_plus\merged-flash.bin
+.\tools\flash.ps1 -Port COM3
 ```
 
 The XIAO boots WLED-Lite within a few seconds. It exposes an access point named **WLED-Lite-AP** (open, no password) for first-run setup.
+
+> **PowerShell execution policy**: if PowerShell refuses to run the script, run this once and try again:
+> `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
+
+> **`merged-flash.bin` known issue**: this build's single-image `merged-flash.bin` has been observed to boot-loop on real XIAO Plus hardware even though the underlying bins are correct (proven by piecemeal flashing the same files booting cleanly). Root cause not yet isolated — likely `esptool merge_bin`'s flash-params header rewriting interacting badly with this specific bootloader / PSRAM combination. `flash.ps1` defaults to **piecemeal** flashing, which sidesteps the issue and matches what `install.wled.me`'s web installer does internally. If you must use the merged file (e.g. one-step web flasher), pass `-Method merged` and expect to debug.
 
 ---
 
