@@ -16,7 +16,7 @@ python -m pip install --user esptool
 .\tools\flash.ps1 -Port COM3
 ```
 
-The XIAO boots WLED-Lite within a few seconds. It exposes an access point named **WLED-Lite-AP** (open, no password) for first-run setup.
+The XIAO boots WLED-Lite within a few seconds. It exposes an access point named **WLED-Lite-AP** for first-run setup. The default password is **`wled1234`** (upstream WLED default, unchanged in our build — having a password prevents anyone in radio range from hijacking a fresh device before its admin PIN is set).
 
 > **PowerShell execution policy**: if PowerShell refuses to run the script, run this once and try again:
 > `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
@@ -127,7 +127,7 @@ If you instead see `Failed to connect to ESP32-S3` — the board isn't in downlo
 
 After flashing, the XIAO reboots and starts WLED-Lite.
 
-1. On your phone or laptop, look for a WiFi network named **WLED-Lite-AP**. Connect to it (no password).
+1. On your phone or laptop, look for a WiFi network named **WLED-Lite-AP**. Connect with password **`wled1234`**.
 2. Your device should auto-open a captive portal at `4.3.2.1`. If not, open a browser and go to `http://4.3.2.1`.
 3. You'll see the **welcome wizard** with three numbered steps:
    - **Connect to WiFi** — pick your home/shop network and enter the password.
