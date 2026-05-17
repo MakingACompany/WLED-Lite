@@ -335,10 +335,21 @@ main, .header, .footer {
 
 /* ---- Segment selector ---- */
 .seg-card { padding: 16px 18px 14px; }
-.seg-pills {
+.seg-pills { display: flex; flex-direction: column; gap: 8px; }
+.seg-pills__row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+.seg-pills__row--expand {
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  animation: drawerIn .22s ease;
+}
+.seg-pills__row[hidden] { display: none; }
+@keyframes drawerIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .seg-pill {
   appearance: none;
@@ -361,6 +372,18 @@ main, .header, .footer {
   background: linear-gradient(180deg, rgba(var(--glow), 0.18), rgba(var(--glow), 0.06));
   border-color: rgba(var(--glow), 0.6);
   color: var(--accent-soft);
+}
+.seg-pill sub {
+  font-size: 0.62em;
+  font-weight: 600;
+  opacity: 0.72;
+  vertical-align: sub;
+  margin-left: 1px;
+  letter-spacing: 0;
+}
+.seg-pill.is-on sub { opacity: 0.85; }
+.seg-pill[data-segid="letters"] {
+  letter-spacing: 0.06em;
 }
 
 /* ---- Daily schedule ---- */

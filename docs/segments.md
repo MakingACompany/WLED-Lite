@@ -42,6 +42,11 @@ In the slim UI:
 
 The displayed color and effect snap to the active segment's current state when you switch pills (the slim UI refetches state on selection change).
 
+### Display polish
+
+- **Subscripts**: segment names with a letter-then-trailing-digit pattern render the digits as a visual subscript on the pill. `B1` displays as **B₁**, `Top12` as **Top₁₂**. Names without a digit suffix (`L`, `Top`) or starting with a digit (`1B`) render unchanged. The underlying name in `/json/state` and on the admin page is still the literal `B1` — only the user-facing pill is restyled.
+- **Nested "Letters" drawer**: when a sign has **5 or more segments**, the row collapses to `[All] [Letters ▸]`. Tapping `Letters` opens a drawer below with one pill per segment. Tapping `All` collapses the drawer and returns to global control. Tapping `Letters` again while a specific letter is selected also collapses + resets to All. Four-letter signs (and smaller) stay flat — no drawer.
+
 ## What's deliberately *not* exposed in the user UI
 
 - Pixel ranges (start / stop) — confusing for non-technical users; admin-only concern.

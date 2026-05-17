@@ -17,6 +17,11 @@
   // segment id (number). Discovered from /json/state on load + every push.
   let segments = [];     // [{id, n}], filtered to entries with stop > start
   let activeSegId = null;
+  // When the segment count crosses NEST_THRESHOLD, the row collapses into
+  // [All] [Letters], with individual pills shown only when the user has
+  // drilled into "Letters" or selected a specific letter.
+  let expandedLetters = false;
+  const NEST_THRESHOLD = 5;
 
   const $ = (id) => document.getElementById(id);
   const statusEl = $('status');
@@ -238,40 +243,127 @@
   }
 
   // ---------- Segment pills ----------
+  // Render a segment name with trailing digits as a visual subscript.
+  // "B1" -> "B<sub>1</sub>", "Top12" -> "Top<sub>12</sub>". Names without a
+  // letter+digit suffix ("L", "1B", "Top") render as plain escaped text.
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+  function formatSegLabel(name) {
+    const m = String(name).match(/^(.*?\D)(\d+)$/);
+    if (m) return escapeHtml(m[1]) + '<sub>' + escapeHtml(m[2]) + '</sub>';
+    return escapeHtml(name);
+  }
+
+  function refetchState() {
+    fetch('/json/si').then(r => r.json())
+      .then(j => j && j.state && applyState(j.state))
+      .catch(() => {});
+  }
+
   function renderSegPills() {
-    const card = $('seg-card');
-    const root = $('seg-pills');
-    if (!card || !root) return;
+    const card   = $('seg-card');
+    const top    = $('seg-pills-top');
+    const expand = $('seg-pills-expand');
+    if (!card || !top || !expand) return;
+
     if (segments.length < 2) {
       card.hidden = true;
       activeSegId = null;
+      expandedLetters = false;
+      expand.hidden = true;
       return;
     }
     card.hidden = false;
-    // If the active id no longer exists, snap back to "All"
     if (activeSegId !== null && !segments.find(s => s.id === activeSegId)) {
       activeSegId = null;
     }
-    root.innerHTML = '';
-    const mkPill = (id, label) => {
+
+    const nested      = segments.length >= NEST_THRESHOLD;
+    const lettersOpen = nested && (expandedLetters || activeSegId !== null);
+
+    top.innerHTML    = '';
+    expand.innerHTML = '';
+
+    const mkPill = (parent, opts) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'seg-pill' + ((id === activeSegId) ? ' is-on' : '');
-      b.dataset.segid = (id === null) ? 'all' : String(id);
-      b.textContent = label;
+      b.className = 'seg-pill' + (opts.on ? ' is-on' : '');
+      b.dataset.segid = opts.key;
+      if (opts.html) b.innerHTML = opts.html;
+      else b.textContent = opts.label;
       b.setAttribute('role', 'tab');
-      b.setAttribute('aria-selected', String(id === activeSegId));
-      b.addEventListener('click', () => {
-        activeSegId = (id === null) ? null : id;
-        // Re-render to update is-on state, and re-fetch state so the
-        // displayed color/effect reflect the newly selected segment.
-        renderSegPills();
-        fetch('/json/si').then(r => r.json()).then(j => j && j.state && applyState(j.state)).catch(()=>{});
-      });
-      root.appendChild(b);
+      b.setAttribute('aria-selected', String(!!opts.on));
+      if (opts.ariaExpanded !== undefined) {
+        b.setAttribute('aria-expanded', String(opts.ariaExpanded));
+      }
+      b.addEventListener('click', opts.onClick);
+      parent.appendChild(b);
     };
-    mkPill(null, 'All');
-    segments.forEach(s => mkPill(s.id, s.n));
+
+    // "All" -- always visible. Tapping it returns to global control and
+    // collapses the letters drawer.
+    mkPill(top, {
+      key: 'all',
+      label: 'All',
+      on: activeSegId === null,
+      onClick: () => {
+        activeSegId = null;
+        expandedLetters = false;
+        renderSegPills();
+        refetchState();
+      }
+    });
+
+    if (nested) {
+      // "Letters" toggle pill. Highlights when a specific letter is active
+      // (or the drawer is manually open). Tapping it drills in.
+      mkPill(top, {
+        key: 'letters',
+        html: 'Letters ' + (lettersOpen ? '▾' : '▸'),
+        on: lettersOpen,
+        ariaExpanded: lettersOpen,
+        onClick: () => {
+          if (activeSegId !== null) {
+            // Already drilled into a specific letter. Tap collapses + resets.
+            activeSegId = null;
+            expandedLetters = false;
+            refetchState();
+          } else {
+            expandedLetters = !expandedLetters;
+          }
+          renderSegPills();
+        }
+      });
+      expand.hidden = !lettersOpen;
+      if (lettersOpen) {
+        segments.forEach(s => mkPill(expand, {
+          key: String(s.id),
+          html: formatSegLabel(s.n),
+          on: s.id === activeSegId,
+          onClick: () => {
+            activeSegId = s.id;
+            expandedLetters = true;
+            renderSegPills();
+            refetchState();
+          }
+        }));
+      }
+    } else {
+      expand.hidden = true;
+      segments.forEach(s => mkPill(top, {
+        key: String(s.id),
+        html: formatSegLabel(s.n),
+        on: s.id === activeSegId,
+        onClick: () => {
+          activeSegId = s.id;
+          renderSegPills();
+          refetchState();
+        }
+      }));
+    }
   }
 
   // ---------- Daily schedule ----------

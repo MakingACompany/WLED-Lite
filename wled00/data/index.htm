@@ -28,7 +28,10 @@
   <!-- Segment selector. Hidden if the device only has one segment. -->
   <section id="seg-card" class="card seg-card" hidden>
     <label class="card__label">Section</label>
-    <div id="seg-pills" class="seg-pills" role="tablist" aria-label="Segments"></div>
+    <div id="seg-pills" class="seg-pills" role="tablist" aria-label="Segments">
+      <div id="seg-pills-top" class="seg-pills__row"></div>
+      <div id="seg-pills-expand" class="seg-pills__row seg-pills__row--expand" hidden></div>
+    </div>
   </section>
 
   <section class="card power">
