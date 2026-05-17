@@ -67,6 +67,26 @@
     </div>
   </section>
 
+  <section class="card">
+    <label class="card__label">Daily schedule</label>
+    <p class="schedule__hint">Turn on at the same time every day, then off at a later time. Uses the time of day on the device — make sure the time zone is set in Settings → Time.</p>
+    <div class="schedule">
+      <label class="schedule__row">
+        <span class="schedule__name">On at</span>
+        <input id="sched-on" class="schedule__input" type="time" value="18:00" required>
+      </label>
+      <label class="schedule__row">
+        <span class="schedule__name">Off at</span>
+        <input id="sched-off" class="schedule__input" type="time" value="00:00" required>
+      </label>
+    </div>
+    <div class="schedule__actions">
+      <button id="sched-save" class="schedule__btn schedule__btn--primary">Save schedule</button>
+      <button id="sched-clear" class="schedule__btn">Clear</button>
+    </div>
+    <p id="sched-status" class="schedule__status" aria-live="polite"></p>
+  </section>
+
 </main>
 
 <footer class="footer">

@@ -336,12 +336,20 @@ static bool captivePortal(AsyncWebServerRequest *request)
   return false;
 }
 
+#ifdef WLED_LITE_SCHEDULE
+#include "wled_lite_schedule.h"
+#endif
+
 void initServer()
 {
   //CORS compatiblity
   DefaultHeaders::Instance().addHeader(F("Access-Control-Allow-Origin"), "*");
   DefaultHeaders::Instance().addHeader(F("Access-Control-Allow-Methods"), "*");
   DefaultHeaders::Instance().addHeader(F("Access-Control-Allow-Headers"), "*");
+
+#ifdef WLED_LITE_SCHEDULE
+  WLEDLiteSchedule::registerEndpoint(server);
+#endif
 
 #ifdef WLED_ENABLE_WEBSOCKETS
   #ifndef WLED_DISABLE_2D 

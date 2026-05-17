@@ -200,6 +200,59 @@
     });
   }
 
+  // ---------- Daily schedule ----------
+  function wireSchedule() {
+    const onIn  = $('sched-on');
+    const offIn = $('sched-off');
+    const save  = $('sched-save');
+    const clear = $('sched-clear');
+    const stat  = $('sched-status');
+    if (!save || !clear) return;
+
+    const setStatus = (msg, cls) => {
+      stat.textContent = msg;
+      stat.classList.remove('is-ok', 'is-error');
+      if (cls) stat.classList.add(cls);
+    };
+
+    const postSchedule = async (body) => {
+      try {
+        const r = await fetch('/wled-lite/schedule', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || !data.ok) {
+          setStatus(data.error || ('Request failed (' + r.status + ')'), 'is-error');
+          return false;
+        }
+        return true;
+      } catch (e) {
+        setStatus('Network error — try again.', 'is-error');
+        return false;
+      }
+    };
+
+    save.addEventListener('click', async () => {
+      const on  = onIn.value;
+      const off = offIn.value;
+      if (!/^\d{2}:\d{2}$/.test(on) || !/^\d{2}:\d{2}$/.test(off)) {
+        setStatus('Enter both times in HH:MM format.', 'is-error');
+        return;
+      }
+      setStatus('Saving…');
+      const ok = await postSchedule({ on, off });
+      if (ok) setStatus('Schedule saved. Daily ' + on + ' → ' + off + '.', 'is-ok');
+    });
+
+    clear.addEventListener('click', async () => {
+      setStatus('Clearing…');
+      const ok = await postSchedule({ clear: true });
+      if (ok) setStatus('Schedule cleared.', 'is-ok');
+    });
+  }
+
   // ---------- Power + Brightness ----------
   function wirePower() {
     powerBtn.addEventListener('click', () => {
@@ -239,6 +292,7 @@
     wirePower();
     wireBrightness();
     wireTimer();
+    wireSchedule();
     wirePicker();
 
     // Initial state fetch (HTTP, in case WS isn't ready yet)
