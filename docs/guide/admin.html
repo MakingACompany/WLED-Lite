@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0e0a07">
+<title>WLED-Lite — Maintainer Reference</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* Admin-specific layout: single column, denser, with a sticky TOC */
+  .admin-layout {
+    display: grid;
+    gap: 40px;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 28px 80px;
+  }
+  @media (min-width: 1000px) {
+    .admin-layout { grid-template-columns: 260px 1fr; gap: 50px; }
+    .admin-toc { position: sticky; top: 24px; align-self: start; max-height: calc(100vh - 48px); overflow-y: auto; }
+  }
+  .admin-toc {
+    background: rgba(255, 184, 120, 0.04);
+    border: 1px solid var(--guide-rule);
+    border-radius: 14px;
+    padding: 18px 18px 18px 22px;
+  }
+  .admin-toc h2 {
+    font-family: ui-serif, serif;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--guide-muted);
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+  .admin-toc ol { margin: 0; padding-left: 1.2em; font-size: 13.5px; }
+  .admin-toc ol ol { padding-left: 1.1em; margin: 4px 0; font-size: 12.5px; opacity: 0.85; }
+  .admin-toc li { margin: 5px 0; }
+  .admin-toc a { color: #ffd9af; text-decoration: none; }
+  .admin-toc a:hover { color: #ffb878; }
+  .admin-content > section { padding-top: 36px; border-top: 1px solid var(--guide-rule); margin-top: 36px; }
+  .admin-content > section:first-child { padding-top: 0; border-top: 0; margin-top: 0; }
+  .admin-content h2 {
+    font-family: ui-serif, serif;
+    font-size: 28px;
+    margin: 0 0 12px;
+    color: #f4e9dd;
+    font-weight: 500;
+  }
+  .admin-content h2 .num { font-style: italic; color: #ffb878; font-weight: 400; margin-right: 8px; }
+  .admin-content h3 {
+    font-family: ui-serif, serif;
+    font-size: 19px;
+    margin: 28px 0 8px;
+    color: #ffd9af;
+    font-weight: 500;
+  }
+  .admin-content h4 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--guide-muted);
+    margin: 18px 0 6px;
+  }
+  .admin-content p, .admin-content li { color: #d5c6b3; }
+  .admin-content code, .admin-content kbd {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.88em;
+    background: rgba(255, 184, 120, 0.07);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #ffd9af;
+    border: 1px solid rgba(255, 184, 120, 0.12);
+  }
+  .admin-content pre {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--guide-rule);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #e8dccc;
+  }
+  .admin-content pre code {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    font-size: inherit;
+    color: inherit;
+  }
+  .admin-content .callout {
+    background: rgba(255, 184, 120, 0.05);
+    border-left: 3px solid rgba(255, 184, 120, 0.4);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 14px 0;
+    font-size: 14.5px;
+  }
+  .admin-content .callout.warn {
+    background: rgba(255, 100, 80, 0.05);
+    border-left-color: rgba(255, 120, 100, 0.6);
+  }
+  .admin-content .callout strong { color: #ffb878; }
+  .admin-content .callout.warn strong { color: #ff9b8a; }
+  .admin-content ul, .admin-content ol { padding-left: 1.3em; }
+  .admin-content li { margin: 5px 0; }
+  .field-list dt {
+    font-family: ui-monospace, monospace;
+    color: #ffd9af;
+    font-weight: 600;
+    margin-top: 14px;
+    font-size: 14px;
+  }
+  .field-list dd { margin: 4px 0 0 0; padding-left: 0; }
+  .field-list dd p { margin: 2px 0 6px; font-size: 14.5px; }
+  .field-list dd .meta {
+    font-size: 12.5px;
+    color: var(--guide-muted);
+    font-style: italic;
+  }
+  .pin-table { font-size: 13px; }
+  .pin-table td:first-child, .pin-table td:nth-child(2) { font-family: ui-monospace, monospace; color: #ffd9af; }
+  .doc-link { font-size: 13px; color: var(--guide-muted); }
+  .doc-link a { color: #ffb878; }
+</style>
+</head>
+<body class="guide">
+
+<header class="guide__top">
+  <h1>WLED-Lite — <em>Maintainer Reference</em></h1>
+  <p>A future-self / customer-support manual for everything behind the gear icon. Settings, build flags, hardware pinout, maintenance procedures.</p>
+  <a class="guide__nav" href="user.html">← User-facing guide</a>
+</header>
+
+<div class="admin-layout">
+
+  <aside class="admin-toc" aria-label="Sections">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#orient">Orientation</a></li>
+      <li><a href="#hub">The Settings hub</a></li>
+      <li><a href="#wifi">Wi-Fi &amp; Network</a></li>
+      <li><a href="#leds">LED &amp; Hardware</a></li>
+      <li><a href="#segments">Segments (custom)</a></li>
+      <li><a href="#pins">Pin Info</a></li>
+      <li><a href="#ui">User Interface</a></li>
+      <li><a href="#sync">Sync Interfaces</a></li>
+      <li><a href="#time">Time &amp; Macros</a></li>
+      <li><a href="#um">Usermods</a>
+        <ol><li><a href="#um-ina219">INA219 current sensor</a></li></ol>
+      </li>
+      <li><a href="#sec">Security &amp; Updates</a></li>
+      <li><a href="#welcome">Welcome wizard</a></li>
+      <li><a href="#schedule-impl">Schedule mechanism</a></li>
+      <li><a href="#pinout">XIAO ESP32-S3 Plus pinout</a></li>
+      <li><a href="#flags">WLED-Lite build flags</a></li>
+      <li><a href="#flashing">Flashing the firmware</a></li>
+      <li><a href="#maintenance">Maintenance procedures</a></li>
+      <li><a href="#refs">Further reading</a></li>
+    </ol>
+  </aside>
+
+  <div class="admin-content">
+
+    <!-- ============================================================== -->
+    <section id="orient">
+      <h2><span class="num">§1</span> Orientation</h2>
+      <p>WLED-Lite is a fork of <a href="https://github.com/wled/WLED">WLED</a> tailored for a custom lighted-sign company. It splits the original busy UI into:</p>
+      <ul>
+        <li><strong>User UI</strong> (<code>/</code>) — the slim "Lantern" interface for end customers: power, brightness, color, effect, timer, schedule, segments.</li>
+        <li><strong>Admin UI</strong> (<code>/settings/*</code>, <code>/wled-lite/*</code>) — everything else, PIN-gated.</li>
+      </ul>
+
+      <h3>Default credentials</h3>
+      <ul>
+        <li><strong>AP SSID:</strong> <code>WLED-Lite-AP</code></li>
+        <li><strong>AP password:</strong> <code>wled1234</code> <span class="doc-link">(upstream default; intentionally kept — maintainer sets each device up before delivery)</span></li>
+        <li><strong>Admin PIN:</strong> set during the 3-step welcome wizard. Never shipped in source. <span class="doc-link">See <a href="#welcome">§12 Welcome wizard</a>.</span></li>
+        <li><strong>OTA password:</strong> default empty; can be set in <a href="#sec">Security &amp; Updates</a>.</li>
+      </ul>
+
+      <h3>Reaching the admin UI</h3>
+      <ol>
+        <li>From the slim UI, tap the <strong>gear icon</strong> in the top-right.</li>
+        <li>Enter the admin PIN. The full settings hub appears.</li>
+      </ol>
+      <p>Direct URLs (you'll be prompted for the PIN if not already authenticated):</p>
+      <ul>
+        <li><code>http://your-sign.local/settings</code> — hub</li>
+        <li><code>http://your-sign.local/wled-lite/segments</code> — custom segment editor</li>
+        <li><code>http://your-sign.local/welcome</code> — first-run wizard (forced when no PIN is set)</li>
+        <li><code>http://your-sign.local/reset</code> — soft reboot (PIN-gated)</li>
+      </ol>
+
+      <div class="callout">
+        <strong>Authentication model:</strong> WLED-Lite reuses upstream's <code>settingsPIN</code>. The PIN gates <code>/settings/*</code>, <code>/edit</code>, <code>/update</code>, <code>/upload</code>, <code>/reset</code>, and <code>/json?cfg</code>. The user UI (<code>/</code>) and the narrow scope-limited endpoints (<code>/json/si</code>, <code>/wled-lite/schedule</code>) are intentionally <em>not</em> gated so the end user can still operate the sign without ever being asked for a PIN.
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="hub">
+      <h2><span class="num">§2</span> The Settings hub</h2>
+      <p>The hub at <code>/settings</code> is a thin page of buttons that route to each sub-page. WLED-Lite hides DMX (because we intentionally don't compile it; see <a href="#wifi">§3</a>) and 2D (disabled at build time).</p>
+      <p>Visible buttons, in order:</p>
+      <table class="guide__table">
+        <thead><tr><th>Button</th><th>Route</th><th>Source</th></tr></thead>
+        <tbody>
+          <tr><td>WiFi &amp; Network</td><td><code>/settings/wifi</code></td><td>upstream</td></tr>
+          <tr><td>LED &amp; Hardware</td><td><code>/settings/leds</code></td><td>upstream</td></tr>
+          <tr><td>Segments</td><td><code>/wled-lite/segments</code></td><td><strong>WLED-Lite custom</strong></td></tr>
+          <tr><td>Pin Info</td><td><code>/settings/pins</code></td><td>upstream</td></tr>
+          <tr><td>User Interface</td><td><code>/settings/ui</code></td><td>upstream (slimmed)</td></tr>
+          <tr><td>Sync Interfaces</td><td><code>/settings/sync</code></td><td>upstream</td></tr>
+          <tr><td>Time &amp; Macros</td><td><code>/settings/time</code></td><td>upstream</td></tr>
+          <tr><td>Usermods</td><td><code>/settings/um</code></td><td>upstream</td></tr>
+          <tr><td>Security &amp; Updates</td><td><code>/settings/sec</code></td><td>upstream</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="wifi">
+      <h2><span class="num">§3</span> WiFi &amp; Network</h2>
+      <p><code>/settings/wifi</code></p>
+
+      <h3>Wi-Fi setup</h3>
+      <dl class="field-list">
+        <dt>Network SSID + Password</dt>
+        <dd><p>Connects the controller to the home / customer Wi-Fi. After save, the device joins as a station and the captive AP eventually disappears.</p></dd>
+        <dt>Static IP / gateway / subnet</dt>
+        <dd><p>Optional. Leave blank for DHCP. <em>Recommended:</em> use a router reservation by MAC instead of setting static here, so the customer's router can hand out a stable address that survives a factory reset.</p></dd>
+        <dt>AP SSID + Password</dt>
+        <dd><p>Defaults to <code>WLED-Lite-AP</code> / <code>wled1234</code>. Used when the configured network is unreachable. Don't disable the AP — it's the recovery path.</p></dd>
+        <dt>mDNS / network hostname</dt>
+        <dd><p>Default: <code>wled-XXXXXX</code> (last 3 bytes of MAC). Set a friendly name per device (e.g. <code>labb-sign</code>) so the customer can type <code>labb-sign.local</code>.</p></dd>
+        <dt>WLED Broadcast Port</dt>
+        <dd><p>UDP 21324. Shared with Realtime, ESP-NOW, and Multicast/E1.31. Don't change unless coexisting with another WLED install on the same LAN that uses the same port.</p></dd>
+        <dt>Improv</dt>
+        <dd><p>Adalight / Improv onboarding over USB serial. We keep it enabled (saves writing custom onboarding firmware).</p></dd>
+      </dl>
+
+      <div class="callout warn">
+        <strong>DMX is NOT compiled in.</strong> Upstream <code>wled.cpp:448–450</code> hard-codes GPIO2 as the DMX TX pin whenever <code>WLED_ENABLE_DMX</code> is defined, which collides with our default LED-data pin on the XIAO Plus. If a specific commercial deployment needs DMX output, spin up a separate env (e.g. <code>xiao_esp32s3_plus_dmx</code>) with <code>WLED_ENABLE_DMX</code> defined and pick a different <code>DATA_PINS</code> default. Network DMX (Art-Net / E1.31 inbound) still works via Sync Interfaces.
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="leds">
+      <h2><span class="num">§4</span> LED &amp; Hardware</h2>
+      <p><code>/settings/leds</code> — per-device LED bus configuration. The build-flag defaults set up a single bus on GPIO2 with 30 WS2812 pixels; this page is where you adapt that to the actual sign.</p>
+
+      <h3>LED outputs (per bus)</h3>
+      <dl class="field-list">
+        <dt>GPIO</dt>
+        <dd><p>The data pin driving this strip. See <a href="#pinout">§14 pinout</a> for the XIAO Plus pin map.</p></dd>
+        <dt>Type</dt>
+        <dd><p>WS281x / SK6812 / APA102 / etc. Most signs use <code>WS2812 RGB</code> or <code>WS2812 RGBW</code>.</p></dd>
+        <dt>Count</dt>
+        <dd><p>Pixels on this bus.</p></dd>
+        <dt>Start</dt>
+        <dd><p>Global pixel index this bus represents. Buses are concatenated into one big virtual strip; segments and effects index into that virtual strip.</p></dd>
+        <dt>Reverse</dt>
+        <dd><p>Mirror the bus left-to-right. Handy when you wired the strip backwards.</p></dd>
+        <dt>Off Refresh</dt>
+        <dd><p>Keep refreshing data when LEDs are off. Usually fine to leave on; turn off to save a tiny amount of CPU.</p></dd>
+      </dl>
+
+      <h3>Brightness limiter / ABL</h3>
+      <p>Auto-Brightness Limiter math caps current draw based on PSU rating × max amps per LED. We <em>also</em> have an INA219 hardware sensor (see <a href="#um-ina219">§10.1</a>) acting as a real-measurement safety net on top.</p>
+
+      <h3>LED transitions</h3>
+      <p>Default 0.7s crossfade. Leave alone unless a customer complains about flicker on color change.</p>
+
+      <h3>Color &amp; gamma</h3>
+      <p>Brightness gamma + RGB-channel gamma on/off. WLED-Lite defaults match upstream; leave them.</p>
+
+      <h3>Multiple buses</h3>
+      <p>Press <strong>Add LED output</strong> to add additional buses. The XIAO Plus carrier breaks out 8 candidate LED pins (GPIO 4, 7, 8, 9, 10, 11, 12, 13) — see <a href="#pinout">§14</a>. WLED's max for ESP32-S3 is 12 buses (4 RMT + 8 I2S/LCD channels).</p>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="segments">
+      <h2><span class="num">§5</span> Segments <span style="color: var(--guide-muted); font-size: 0.7em;">(WLED-Lite custom)</span></h2>
+      <p><code>/wled-lite/segments</code> — custom admin page that lets you carve the strip into named regions. The end user sees these as pills in the slim UI.</p>
+
+      <h3>What this page does</h3>
+      <ul>
+        <li>Renders a table of segment {name, start, stop} rows.</li>
+        <li>POSTs the array back to <code>/json/state</code> with the seg payload — same backing storage as upstream's segment system, so it persists in <code>cfg.json</code>.</li>
+        <li>Also writes preset 248 (the boot preset) so segment geometry survives reboot even without state-change-triggered cfg save.</li>
+      </ul>
+
+      <h3>Defining segments</h3>
+      <dl class="field-list">
+        <dt>Name</dt>
+        <dd><p>What the end user sees on the pill. Keep short. Names with letter+trailing-digit (<code>B1</code>, <code>Top12</code>) render with subscript in the slim UI; underlying name is unchanged.</p></dd>
+        <dt>Start / Stop</dt>
+        <dd><p>Pixel indices on the strip, zero-based, half-open. A 50-pixel region starts at 0, stops at 50 (covers pixels 0..49).</p></dd>
+      </dl>
+
+      <h3>Edge cases</h3>
+      <ul>
+        <li><strong>Single segment</strong> — the Section card is hidden in the slim UI. Add a second segment to make it appear.</li>
+        <li><strong>5+ segments</strong> — slim UI auto-collapses into <code>[All] [Letters ▸]</code>. No admin action needed; threshold is hard-coded in <code>index.js</code>.</li>
+        <li><strong>Per-segment brightness</strong> — not exposed in the slim UI. Brightness is treated as global.</li>
+      </ul>
+      <p class="doc-link">Source: <code>wled00/wled_lite_segments.{h,cpp}</code>. See <a href="../segments.md">docs/segments.md</a>.</p>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="pins">
+      <h2><span class="num">§6</span> Pin Info</h2>
+      <p><code>/settings/pins</code> — read-only diagnostic page that shows the current GPIO allocation. Useful when adding a new bus or button to confirm what's already taken.</p>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="ui">
+      <h2><span class="num">§7</span> User Interface</h2>
+      <p><code>/settings/ui</code> — drastically slimmed compared to upstream. We removed the 8-toggle theme/checkbox clutter that confused end users.</p>
+      <dl class="field-list">
+        <dt>Server description</dt>
+        <dd><p>The friendly name shown in the slim UI footer ("WLED-Lite" by default). Set per-device to make support easier ("LABB Sign", "Dad's Workshop", etc.).</p></dd>
+        <dt>Save</dt>
+        <dd><p>That's it. All other upstream UI toggles (dark mode toggle, theme picker, layouts) were stripped — the slim UI is opinionated and doesn't need them.</p></dd>
+      </dl>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="sync">
+      <h2><span class="num">§8</span> Sync Interfaces</h2>
+      <p><code>/settings/sync</code> — controls how this controller talks to other controllers or external lighting systems.</p>
+
+      <h3>WLED Broadcast (UDP 21324)</h3>
+      <dl class="field-list">
+        <dt>Send notifications</dt>
+        <dd><p><strong>Default ON</strong> in WLED-Lite (we flip it from upstream's <code>false</code> via <code>WLED_LITE_SYNC_DEFAULTS</code>). Two devices on the same Wi-Fi mirror automatically.</p></dd>
+        <dt>Receive notifications</dt>
+        <dd><p>Default ON. Receive sync packets from peers.</p></dd>
+        <dt>Sync groups (8-bit mask)</dt>
+        <dd><p>Group 0x01 by default. Devices only sync with peers that share at least one bit.</p></dd>
+      </dl>
+
+      <h3>ESP-NOW</h3>
+      <p>Wi-Fi-less peer-to-peer for in-store displays / sync. Opt-in per device (off by default for security + power). When on, devices in the same group sync without a router.</p>
+
+      <h3>Multicast / Real-time</h3>
+      <p>Art-Net, E1.31 (sACN), DDP, TPM2 inbound. Used when a stage controller is driving the sign. Set the universe + start address; map to a segment via the LED config.</p>
+
+      <h3>MQTT</h3>
+      <p>Compiled in but UI hidden by default. If a deployment needs Home Assistant integration, surface the MQTT panel by removing the relevant <code>display:none</code> in <code>settings_sync.htm</code> (or just point the customer at MQTT broker setup directly).</p>
+
+      <p class="doc-link">See <a href="../multi-controller-sync.md">docs/multi-controller-sync.md</a> for the full protocol notes.</p>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="time">
+      <h2><span class="num">§9</span> Time &amp; Macros</h2>
+      <p><code>/settings/time</code> — time, timezone, sunrise/sunset, countdown effect, timer/macro automation.</p>
+
+      <h3>NTP (WLED-Lite defaults)</h3>
+      <dl class="field-list">
+        <dt>Get time from NTP server</dt>
+        <dd><p><strong>Default ON</strong> (<code>WLED_NTP_ENABLED=true</code>).</p></dd>
+        <dt>NTP server</dt>
+        <dd><p><strong>Default <code>time.nist.gov</code></strong> (NIST .gov server). Reliable in the US; doesn't require pool.ntp.org reachability. Change to <code>pool.ntp.org</code> for non-US deployments if .nist.gov is slow.</p></dd>
+        <dt>Sync interval</dt>
+        <dd><p><strong>5 minutes</strong> (<code>NTP_SYNC_INTERVAL=300UL</code>). Keeps drift under a minute for "lights at 6 pm" schedules.</p></dd>
+        <dt>Time zone</dt>
+        <dd><p>Pick from dropdown. WLED uses POSIX TZ rules so DST is handled automatically.</p></dd>
+      </dl>
+
+      <div class="callout">
+        <strong>NTP-only design decision.</strong> There is no manual "set current time" UI. Rationale: smart-outlet users cut all power so the controller has no clock to keep anyway, and any power-outage scenario that takes the controller down likely also takes the router down. If NTP is unreachable, the daily schedule simply doesn't fire until it returns. Don't add manual time entry without revisiting this trade-off.
+      </div>
+
+      <h3>Sunrise / Sunset</h3>
+      <p>Set latitude + longitude; controller computes local sunrise/sunset and can fire timers relative to them ("on at sunset −15 min"). Useful for outdoor signs.</p>
+
+      <h3>Countdown</h3>
+      <p>Sets a target date/time for the Countdown <em>effect</em>. <strong>Does not set the system clock.</strong> Common confusion: these fields look like a clock-set control but they only feed the countdown effect.</p>
+
+      <h3>Timers (upstream)</h3>
+      <p>Up to 8 entries: {hour, minute, weekday-bitmask, preset id}. WLED-Lite's daily-schedule feature writes two of these (one for preset 250 = Daily ON, one for preset 249 = Daily OFF) via the user-facing slim UI. <strong>Don't manually edit timers that the slim UI created</strong> — re-saving the schedule will overwrite them.</p>
+
+      <h3>Macros / Presets</h3>
+      <p>Reserved preset IDs in WLED-Lite:</p>
+      <ul>
+        <li><strong>248</strong> — boot preset (segment geometry, written by segments admin save).</li>
+        <li><strong>249</strong> — "Daily OFF" (written by /wled-lite/schedule).</li>
+        <li><strong>250</strong> — "Daily ON" (written by /wled-lite/schedule).</li>
+      </ul>
+      <p class="doc-link">See <a href="../scheduling.md">docs/scheduling.md</a> for the full state machine.</p>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="um">
+      <h2><span class="num">§10</span> Usermods</h2>
+      <p><code>/settings/um</code> — configuration UI for any usermods compiled in. WLED-Lite's <code>custom_usermods</code> currently is <code>audioreactive INA219</code> (audioreactive is inherited from upstream's xiao base; we don't use the mic on a sign but the FX library expects the symbols to exist).</p>
+
+      <section id="um-ina219" style="margin-top: 18px;">
+        <h3>INA219 current sensor</h3>
+        <p>Hardware safety net: measures actual current on the I2C bus and clamps brightness if the strip exceeds the configured cap. Auto-detects on I2C addresses 0x40 / 0x41 / 0x44 / 0x45. Coexists with other I2C devices (OLED, etc.).</p>
+        <dl class="field-list">
+          <dt>Enabled</dt>
+          <dd><p>Master toggle. Off by default; turn on once you've actually wired the sensor.</p></dd>
+          <dt>I2C address</dt>
+          <dd><p>Auto, 0x40, 0x41, 0x44, 0x45. Leave on Auto unless you've manually set the address via solder jumpers.</p></dd>
+          <dt>Shunt resistance</dt>
+          <dd><p>Match the value of the on-board shunt resistor. Most INA219 breakout boards ship with 0.1 Ω.</p></dd>
+          <dt>Max current (A)</dt>
+          <dd><p>The cap. When measured current exceeds <code>max × 110%</code>, brightness is reduced proportionally on the next 200 ms poll.</p></dd>
+          <dt>Hysteresis</dt>
+          <dd><p>How far under the cap the current must drop before brightness recovers. Stops thrash near the limit.</p></dd>
+        </dl>
+        <p class="doc-link">Source: <code>usermods/INA219/</code> (mirrors upstream's INA226_v2). See <a href="../current-limit-ina219.md">docs/current-limit-ina219.md</a>.</p>
+      </section>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="sec">
+      <h2><span class="num">§11</span> Security &amp; Updates</h2>
+      <p><code>/settings/sec</code></p>
+
+      <h3>Settings PIN</h3>
+      <p>Gates <code>/settings/*</code>, <code>/edit</code>, <code>/update</code>, <code>/upload</code>, <code>/reset</code>, <code>/json?cfg</code>. Set per-device during the welcome wizard. To change:</p>
+      <ol>
+        <li>Enter current PIN.</li>
+        <li>Type new PIN twice.</li>
+        <li>Save.</li>
+      </ol>
+      <div class="callout warn">
+        <strong>If you forget the PIN:</strong> there's no recovery. Wipe the device (USB reflash with <code>erase-flash</code> + <code>write-flash</code> of <code>merged-flash.bin</code>) and re-onboard. See <a href="#flashing">§16 Flashing</a>.
+      </div>
+
+      <h3>OTA</h3>
+      <dl class="field-list">
+        <dt>OTA lock</dt>
+        <dd><p>Master OTA enable. When on, <code>/update</code> requires the OTA password.</p></dd>
+        <dt>OTA password</dt>
+        <dd><p>Separate from the settings PIN. Default empty.</p></dd>
+        <dt>ArduinoOTA</dt>
+        <dd><p>Espressif's IDE-driven OTA. Useful during dev; leave off in production.</p></dd>
+      </dl>
+
+      <h3>Backup / Restore</h3>
+      <p>Download <code>cfg.json</code> + <code>presets.json</code> via <code>/edit</code> before any risky operation. To restore, upload back via the same page.</p>
+
+      <h3>Factory reset</h3>
+      <p>"Reset" button erases <code>cfg.json</code> and <code>presets.json</code> from LittleFS. The Wi-Fi credentials, PIN, segments, schedule, and all timers are wiped. Use when re-deploying to a new customer.</p>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="welcome">
+      <h2><span class="num">§12</span> Welcome wizard <span style="color: var(--guide-muted); font-size: 0.7em;">(WLED-Lite custom)</span></h2>
+      <p><code>/welcome</code> — 3-step first-run flow. <code>/</code> redirects here automatically when no PIN is set (<code>WLED_LITE_SECURITY_GATES</code>).</p>
+      <ol>
+        <li><strong>Step 1: Wi-Fi.</strong> Pick the customer's network, enter password. Device joins as STA on save.</li>
+        <li><strong>Step 2: Device name.</strong> Friendly hostname (becomes <code>{name}.local</code>).</li>
+        <li><strong>Step 3: Admin PIN.</strong> Set + confirm. Once a PIN exists, <code>/</code> stops redirecting to <code>/welcome</code>.</li>
+      </ol>
+      <div class="callout">
+        <strong>Re-running the wizard:</strong> only happens on PIN-less devices. To force it again, clear the PIN (<code>/settings/sec</code> with empty new-PIN) or factory-reset (<code>/reset</code>).
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="schedule-impl">
+      <h2><span class="num">§13</span> Daily schedule mechanism</h2>
+      <p>The slim UI's <em>Daily schedule</em> card POSTs to <code>/wled-lite/schedule</code>. This endpoint is <em>not</em> PIN-gated by design — the end user is supposed to set their own schedule without knowing the admin PIN, but they only get a tightly scoped API:</p>
+      <ul>
+        <li>Save the current device state as preset 250 ("Daily ON").</li>
+        <li>Save an off-state as preset 249 ("Daily OFF").</li>
+        <li>Add/replace two entries in the <code>timers</code> vector that fire those presets at the requested times, every day.</li>
+      </ul>
+      <p>Request body: <code>{"on":"HH:MM","off":"HH:MM"}</code> (24-hour). To clear: <code>{"clear":true}</code>.</p>
+      <p>Persistence: timers in <code>cfg.json</code>, presets in <code>presets.json</code>. Both survive reboot.</p>
+      <p class="doc-link">Source: <code>wled00/wled_lite_schedule.{h,cpp}</code>. See <a href="../scheduling.md">docs/scheduling.md</a>.</p>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="pinout">
+      <h2><span class="num">§14</span> XIAO ESP32-S3 Plus pinout</h2>
+      <p>The carrier board around the Seeed XIAO Plus uses this default GPIO map. Override per device in <code>/settings/leds</code> and <code>/settings/pins</code>.</p>
+
+      <table class="guide__table pin-table">
+        <thead><tr><th>GPIO</th><th>XIAO label</th><th>Purpose</th><th>Default use</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>D0</td><td>Button 1</td><td>short = cycle effect; long = enter brightness mode</td></tr>
+          <tr><td>2</td><td>D1</td><td>LED data (primary)</td><td><code>DATA_PINS=2</code>; 1 bus, 30 px, WS2812 RGB</td></tr>
+          <tr><td>4</td><td>D3</td><td>Button 2</td><td>short = cycle palette; long = power toggle</td></tr>
+          <tr><td>5</td><td>D4</td><td>I²C SDA</td><td>INA219, OLED, fan PWM driver, sensors</td></tr>
+          <tr><td>6</td><td>D5</td><td>I²C SCL</td><td>same bus as above</td></tr>
+          <tr><td>7–13</td><td>D6 + Plus header</td><td>LED data (extra)</td><td>Add as additional buses via /settings/leds</td></tr>
+          <tr><td>38–42</td><td>Plus header</td><td>Reserved / expansion</td><td>Unused — available for sensors, OLED CS, etc.</td></tr>
+          <tr><td>43, 44</td><td>HW UART TX/RX</td><td>UART debug (or Status LED on 44)</td><td>USB-CDC handles serial; GPIO44 doubles as <code>STATUSLED</code> (boot/AP/error/connected)</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Status LED behavior (GPIO44)</h3>
+      <ul>
+        <li><strong>Solid</strong> — connected, normal operation.</li>
+        <li><strong>Slow blink</strong> — connecting to Wi-Fi.</li>
+        <li><strong>Fast blink</strong> — AP mode (no Wi-Fi configured or unreachable).</li>
+        <li><strong>Off</strong> — boot, or sub-system error.</li>
+      </ul>
+      <p class="doc-link">See <a href="../hardware-pinmap.md">docs/hardware-pinmap.md</a> and <a href="../button-bindings.md">docs/button-bindings.md</a>.</p>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="flags">
+      <h2><span class="num">§15</span> WLED-Lite build flags</h2>
+      <p>All in <code>platformio.ini</code> → <code>[wled_lite_common]</code>. Removing a flag is a reversible scope change — the source code paths exist, they're just compiled out.</p>
+
+      <h3>Brand</h3>
+      <pre><code>WLED_BRAND="WLED-Lite"
+WLED_PRODUCT_NAME="WLED-Lite"
+WLED_REPO="MakingACompany/WLED-Lite"
+WLED_RELEASE_NAME="XIAO_ESP32S3_LITE"      ; per-env, gates OTA acceptance</code></pre>
+
+      <h3>Scope reductions</h3>
+      <pre><code>WLED_DISABLE_2D
+WLED_DISABLE_ALEXA
+WLED_DISABLE_HUESYNC
+WLED_DISABLE_INFRARED
+WLED_DISABLE_LOXONE
+WLED_DISABLE_PARTICLESYSTEM2D
+WLED_DISABLE_PIXELFORGE</code></pre>
+      <p>2D matrix support, Alexa voice, Philips Hue / Loxone integrations, IR remotes, 2D particle effects, pixel-forge audio overlay. Re-enable per-device by removing the flag and rebuilding.</p>
+
+      <h3>USB + admin</h3>
+      <pre><code>ARDUINO_USB_MODE=1
+ARDUINO_USB_CDC_ON_BOOT=1                  ; USB-CDC for programming + debug
+WLED_ENABLE_USERMOD_PAGE                   ; /u (usermod admin page)
+BOARD_HAS_PSRAM</code></pre>
+
+      <h3>WLED-Lite custom flags</h3>
+      <pre><code>WLED_LITE_FX_TRIM                          ; curate effect picker (~22 keepers)
+WLED_LITE_BUTTON_BRIGHTNESS_MODE           ; 5-level brightness FSM on btn1 long
+WLED_LITE_SYNC_DEFAULTS                    ; sendNotifications: false -> true
+WLED_LITE_SECURITY_GATES                   ; /welcome forced until PIN set; /reset PIN-gated
+WLED_LITE_SCHEDULE                         ; POST /wled-lite/schedule
+WLED_LITE_SEGMENTS                         ; GET /wled-lite/segments (admin editor)
+WLED_LITE_NTP_SERVER="time.nist.gov"       ; default NTP host
+WLED_NTP_ENABLED=true                      ; NTP on out of the box
+NTP_SYNC_INTERVAL=300UL                    ; 5 minutes</code></pre>
+
+      <h3>Hardware defaults</h3>
+      <pre><code>DATA_PINS=2
+LED_TYPES=TYPE_WS2812_RGB
+PIXEL_COUNTS=30
+BTNPIN=1,4                                 ; button 1 = GPIO1, button 2 = GPIO4
+HW_PIN_SDA=5
+HW_PIN_SCL=6
+STATUSLED=44                               ; status LED on HW UART RX (unused; USB-CDC handles serial)</code></pre>
+      <p class="doc-link">See <a href="../feature-flag-audit.md">docs/feature-flag-audit.md</a> for the full keep/drop decision matrix.</p>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="flashing">
+      <h2><span class="num">§16</span> Flashing the firmware</h2>
+
+      <h3>Pre-built binaries</h3>
+      <p>Checked-in under <code>firmware/&lt;env&gt;/</code> after each meaningful build. Each env folder contains:</p>
+      <ul>
+        <li><code>firmware.bin</code> — for OTA via <code>/update</code></li>
+        <li><code>merged-flash.bin</code> — first-time USB flash (bootloader + partition table + app, all in one)</li>
+      </ul>
+
+      <h3>First-time USB flash (Linux/macOS)</h3>
+      <pre><code>esptool --chip esp32s3 --port /dev/ttyACM0 --baud 460800 erase-flash
+esptool --chip esp32s3 --port /dev/ttyACM0 --baud 460800 \
+  --before default-reset --after hard-reset \
+  write-flash --flash-mode dio --flash-size 16MB \
+  0x0 firmware/xiao_esp32s3_plus/merged-flash.bin</code></pre>
+      <div class="callout warn">
+        <strong>Use <code>--flash-mode dio</code>, not <code>qio</code>.</strong> Puya flash on the XIAO Plus can't QIO before the second-stage bootloader initializes it. Using <code>qio</code> in <code>write-flash</code> or <code>merge-bin</code> bootloops the device.
+      </div>
+
+      <h3>First-time USB flash (Windows)</h3>
+      <p>See <a href="../flash-from-windows.md">docs/flash-from-windows.md</a>.</p>
+
+      <h3>Piecemeal flash (if <code>merged-flash.bin</code> bootloops)</h3>
+      <pre><code>esptool --chip esp32s3 --port /dev/ttyACM0 --baud 460800 \
+  --before default-reset --after hard-reset \
+  write-flash --flash-mode dio --flash-size 16MB \
+  0x0      .pio/build/xiao_esp32s3_plus/bootloader.bin \
+  0x8000   .pio/build/xiao_esp32s3_plus/partitions.bin \
+  0xe000   ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin \
+  0x10000  .pio/build/xiao_esp32s3_plus/firmware.bin</code></pre>
+
+      <h3>OTA</h3>
+      <ol>
+        <li>Open <code>/update</code> (or <code>/settings</code> → Security &amp; Updates → Update).</li>
+        <li>Upload <code>firmware/&lt;env&gt;/firmware.bin</code>.</li>
+        <li>Device reboots into the new image automatically.</li>
+      </ol>
+      <p>The OTA header must match <code>WLED_RELEASE_NAME</code> — flashing a <code>xiao_esp32s3_plus_8MB</code> binary onto a 16MB env is rejected.</p>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="maintenance">
+      <h2><span class="num">§17</span> Maintenance procedures</h2>
+
+      <h3>Re-deploy to a new customer</h3>
+      <ol>
+        <li>Connect to controller as you (current customer's Wi-Fi if accessible, else AP fallback after factory-reset).</li>
+        <li>Go to Security &amp; Updates → Factory Reset.</li>
+        <li>Power-cycle. Device boots into AP mode; welcome wizard waits at <code>/welcome</code>.</li>
+        <li>Reconfigure Wi-Fi, name, PIN.</li>
+        <li>Set up segments + schedule if needed.</li>
+      </ol>
+
+      <h3>Recover from a boot loop</h3>
+      <ol>
+        <li>USB-flash <code>merged-flash.bin</code> for the matching env. See <a href="#flashing">§16</a>.</li>
+        <li>Watch serial (USB-CDC) for the cause of the previous loop.</li>
+        <li>If a bad <code>cfg.json</code> is the cause: hold both buttons during boot to force AP mode without reading config (TBD: verify upstream behavior; otherwise factory-reset over USB by erasing flash entirely).</li>
+      </ol>
+
+      <h3>Diagnose Wi-Fi issues</h3>
+      <ol>
+        <li>If the controller doesn't appear on the network for &gt; 90 s, it's probably in AP fallback. Check phone Wi-Fi for <code>WLED-Lite-AP</code>.</li>
+        <li>Status LED on GPIO44 — see <a href="#pinout">§14</a> for its blink codes.</li>
+        <li>USB serial at 115200 prints connection attempts.</li>
+      </ol>
+
+      <h3>Pull an upstream-WLED merge</h3>
+      <p>See <a href="../upstream-sync.md">docs/upstream-sync.md</a>. Monthly playbook with conflict guides for <code>platformio.ini</code>, <code>package.json</code>, <code>wled.h</code>, <code>button.cpp</code>, <code>FX.cpp</code>.</p>
+
+      <h3>Build from source</h3>
+      <p>Linux/macOS:</p>
+      <pre><code>~/.local/bin/pio run -e xiao_esp32s3_plus
+~/.local/bin/pio run -e xiao_esp32s3_plus -t upload</code></pre>
+      <p>Windows: <a href="../dev-setup-windows.md">docs/dev-setup-windows.md</a>.</p>
+      <p>PlatformIO &ge; 6 is required (Ubuntu's apt-shipped 4.x is too old — install via <code>pip install --user platformio</code>).</p>
+    </section>
+
+    <!-- ============================================================== -->
+    <section id="refs">
+      <h2><span class="num">§18</span> Further reading</h2>
+      <ul>
+        <li><a href="../WLED-LITE-PLAN.md">docs/WLED-LITE-PLAN.md</a> — canonical roadmap + status</li>
+        <li><a href="../feature-flag-audit.md">docs/feature-flag-audit.md</a> — keep/drop decision matrix for every WLED feature flag</li>
+        <li><a href="../hardware-pinmap.md">docs/hardware-pinmap.md</a> — XIAO Plus pinout deep-dive</li>
+        <li><a href="../button-bindings.md">docs/button-bindings.md</a> — physical button FSM</li>
+        <li><a href="../current-limit-ina219.md">docs/current-limit-ina219.md</a> — INA219 usermod design</li>
+        <li><a href="../multi-controller-sync.md">docs/multi-controller-sync.md</a> — UDP / ESP-NOW sync</li>
+        <li><a href="../scheduling.md">docs/scheduling.md</a> — daily schedule state machine</li>
+        <li><a href="../segments.md">docs/segments.md</a> — segments API + UX</li>
+        <li><a href="../fx-curation.md">docs/fx-curation.md</a> — effect-picker keepers list</li>
+        <li><a href="../ui-split-design.md">docs/ui-split-design.md</a> — user/admin UI partition rationale</li>
+        <li><a href="../flash-from-windows.md">docs/flash-from-windows.md</a> — Windows flashing quick-start</li>
+        <li><a href="../dev-setup-windows.md">docs/dev-setup-windows.md</a> — Windows dev environment</li>
+        <li><a href="../upstream-sync.md">docs/upstream-sync.md</a> — monthly upstream-merge playbook</li>
+      </ul>
+    </section>
+
+  </div>
+</div>
+
+<footer class="guide__foot">
+  <p>WLED-Lite — a fork of <a href="https://github.com/wled/WLED">WLED</a>, EUPL-1.2 licensed.</p>
+</footer>
+
+</body>
+</html>

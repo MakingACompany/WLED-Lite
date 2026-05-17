@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0e0a07">
+<title>Your Sign — How to Use It · WLED-Lite</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="guide">
+
+<header class="guide__top">
+  <h1>Your sign, <em>and how to use it</em></h1>
+  <p>A short, friendly guide to controlling your lighted sign from your phone, tablet, or computer.</p>
+  <a class="guide__nav" href="#section-main">Start →</a>
+</header>
+
+<main class="guide__body">
+
+  <nav class="guide__toc" aria-label="Table of contents">
+    <h2>What's in this guide</h2>
+    <ol>
+      <li><a href="#section-connect">Getting to the controls</a></li>
+      <li><a href="#section-main">The main screen</a></li>
+      <li><a href="#section-power">Turning the sign on and off</a></li>
+      <li><a href="#section-brightness">Adjusting brightness</a></li>
+      <li><a href="#section-color">Changing the color</a></li>
+      <li><a href="#section-effects">Picking an effect</a></li>
+      <li><a href="#section-timer">Turn off in… (auto-shutoff)</a></li>
+      <li><a href="#section-schedule">Daily schedule</a></li>
+      <li><a href="#section-segments">Multi-letter signs</a></li>
+      <li><a href="#section-trouble">Troubleshooting</a></li>
+    </ol>
+  </nav>
+
+  <!-- ============================================================== -->
+  <section class="guide__section" id="section-connect">
+    <div class="guide__text">
+      <h2><span class="num">1.</span> Getting to the controls</h2>
+      <p>Your installer set up your sign on your home Wi-Fi and gave you a web address to open in your phone's browser. It usually looks like one of these:</p>
+      <ul>
+        <li>A name: <code>your-sign.local</code> (or whatever your installer named it)</li>
+        <li>A number: <code>192.168.1.42</code> (or similar)</li>
+      </ul>
+      <p>Open that address in Safari (iPhone) or Chrome (Android). The main control screen will appear.</p>
+      <div class="callout">
+        <strong>Tip:</strong> Add this page to your phone's home screen so it opens with one tap. In Safari, tap the share button → <em>Add to Home Screen</em>. In Chrome, tap the three dots → <em>Add to Home Screen</em>.
+      </div>
+    </div>
+    <div class="guide__demo">
+      <div class="phone">
+        <div class="phone__screen is-mock" style="min-height: 220px; padding: 30px 22px;">
+          <div style="font-family: var(--sans); color: #b09b87; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px;">Address bar</div>
+          <div style="background: rgba(255, 184, 120, 0.06); border: 1px solid rgba(255, 184, 120, 0.15); border-radius: 12px; padding: 12px 14px; font-family: ui-monospace, monospace; color: #ffd9af; font-size: 14px;">
+            your-sign.local
+          </div>
+          <div style="font-family: var(--sans); color: #b09b87; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; margin: 22px 0 8px;">Or</div>
+          <div style="background: rgba(255, 184, 120, 0.06); border: 1px solid rgba(255, 184, 120, 0.15); border-radius: 12px; padding: 12px 14px; font-family: ui-monospace, monospace; color: #ffd9af; font-size: 14px;">
+            192.168.1.42
+          </div>
+        </div>
+      </div>
+      <p class="phone__caption">Your address may look different — use whichever one your installer wrote down.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="guide__section guide__section--demo-left" id="section-main">
+    <div class="guide__text">
+      <h2><span class="num">2.</span> The main screen</h2>
+      <p>When you open the page, you'll see a calm dark background with a few rounded "cards." Each card controls one thing about your sign.</p>
+      <ol>
+        <li><strong>Section</strong> <span style="color: var(--guide-muted)">(only on multi-letter signs)</span> — pick which letter to control.</li>
+        <li><strong>Power</strong> — turns the sign on and off.</li>
+        <li><strong>Brightness</strong> — how bright the lights are.</li>
+        <li><strong>Color</strong> — picks the color the sign glows.</li>
+        <li><strong>Effect</strong> — how the lights move or shimmer.</li>
+        <li><strong>Turn off in</strong> — auto-shutoff after a set time.</li>
+        <li><strong>Daily schedule</strong> — turns on / off the same times every day.</li>
+      </ol>
+      <div class="callout">
+        The little <strong>gear icon</strong> in the top-right corner is for your installer. If you tap it, you'll see a request for a PIN. That's normal — you don't need to go in there.
+      </div>
+    </div>
+
+    <div class="guide__demo">
+      <div class="phone">
+        <div class="phone__screen is-mock">
+          <span class="annot" style="top: 32px; right: 22px;">×</span>
+          <header class="header">
+            <h1 class="brand">
+              <span class="brand__main">WLED</span><span class="brand__mark">·</span><em class="brand__sub">lite</em>
+            </h1>
+            <a href="#" class="gear" aria-label="Settings">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
+            </a>
+          </header>
+          <main class="stack">
+            <section class="card power">
+              <button class="power__btn" aria-pressed="true"><span class="power__halo"></span><span class="power__icon"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg></span></button>
+              <p class="power__state" style="color: #ffd9af;">On</p>
+            </section>
+            <section class="card">
+              <label class="card__label">Brightness</label>
+              <div class="slider-row">
+                <input class="slider" type="range" min="1" max="255" value="160">
+                <output class="slider-val">63%</output>
+              </div>
+            </section>
+            <section class="card">
+              <label class="card__label">Effect</label>
+              <ul class="effects" role="listbox">
+                <li class="effect is-on">Solid</li>
+                <li class="effect">Breathe</li>
+                <li class="effect">Twinkle</li>
+                <li class="effect">Fire 2012</li>
+              </ul>
+            </section>
+          </main>
+        </div>
+      </div>
+      <p class="phone__caption">The main screen, on a phone. The amber × is the gear icon (installer only).</p>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="guide__section" id="section-power">
+    <div class="guide__text">
+      <h2><span class="num">3.</span> Turning the sign on and off</h2>
+      <p>The big round button at the top is your power button.</p>
+      <ul>
+        <li><strong>Tap it once</strong> to turn the sign on.</li>
+        <li><strong>Tap it again</strong> to turn the sign off.</li>
+      </ul>
+      <p>When the sign is on, a soft amber glow appears around the button and the word underneath changes from <em>Off</em> to <em>On</em>.</p>
+    </div>
+    <div class="guide__demo">
+      <div class="phone-row">
+        <div class="phone">
+          <div class="phone__screen is-mock">
+            <section class="card power" style="border: 0;">
+              <button class="power__btn" aria-pressed="false"><span class="power__halo"></span><span class="power__icon"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg></span></button>
+              <p class="power__state">Off</p>
+            </section>
+          </div>
+        </div>
+        <div class="phone">
+          <div class="phone__screen is-mock">
+            <section class="card power" style="border: 0;">
+              <button class="power__btn" aria-pressed="true"><span class="power__halo"></span><span class="power__icon"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg></span></button>
+              <p class="power__state" style="color: #ffd9af;">On</p>
+            </section>
+          </div>
+        </div>
+      </div>
+      <p class="phone__caption">Off (left) and On (right).</p>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="guide__section guide__section--demo-left" id="section-brightness">
+    <div class="guide__text">
+      <h2><span class="num">4.</span> Adjusting brightness</h2>
+      <p>The slider sets how bright the whole sign is — from a soft nightlight glow to full daylight visibility.</p>
+      <ul>
+        <li><strong>Slide left</strong> for dimmer.</li>
+        <li><strong>Slide right</strong> for brighter.</li>
+        <li>The percentage on the right updates as you slide.</li>
+      </ul>
+      <p>Brightness changes apply to the whole sign at once, even if your sign has multiple letters or sections.</p>
+    </div>
+    <div class="guide__demo">
+      <div class="phone">
+        <div class="phone__screen is-mock">
+          <section class="card">
+            <label class="card__label">Brightness</label>
+            <div class="slider-row">
+              <input class="slider" type="range" min="1" max="255" value="48">
+              <output class="slider-val">19%</output>
+            </div>
+          </section>
+          <section class="card" style="margin-top: 10px;">
+            <label class="card__label">Brightness</label>
+            <div class="slider-row">
+              <input class="slider" type="range" min="1" max="255" value="200">
+              <output class="slider-val">78%</output>
+            </div>
+          </section>
+        </div>
+      </div>
+      <p class="phone__caption">Two example brightness levels.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="guide__section" id="section-color">
+    <div class="guide__text">
+      <h2><span class="num">5.</span> Changing the color</h2>
+      <p>The color wheel lets you pick any color for the sign.</p>
+      <ul>
+        <li><strong>Tap or drag</strong> anywhere on the wheel.</li>
+        <li>The sign updates right away — there's no "save" button needed.</li>
+      </ul>
+      <p>For pure white, tap right in the center. For pastels, drag toward the center; for vivid colors, drag toward the edge.</p>
+      <div class="callout">
+        <strong>Try it:</strong> the color wheel in the picture is live — go ahead, drag it.
+      </div>
+    </div>
+    <div class="guide__demo">
+      <div class="phone">
+        <div class="phone__screen">
+          <section class="card">
+            <label class="card__label">Color</label>
+            <div id="demo-picker" class="picker"></div>
+          </section>
+        </div>
+      </div>
+      <p class="phone__caption">Live demo — doesn't affect any real sign.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="guide__section guide__section--demo-left" id="section-effects">
+    <div class="guide__text">
+      <h2><span class="num">6.</span> Picking an effect</h2>
+      <p>An "effect" changes how the lights behave. Some effects keep the color steady (like <strong>Solid</strong> — just a flat color). Others make the lights breathe, twinkle, chase along the strip, or pulse like firelight.</p>
+      <p>Tap any name to switch to that effect. The currently active effect glows amber.</p>
+      <h3>A few favorites to try</h3>
+      <ul>
+        <li><strong>Solid</strong> — steady, no movement. Good for daytime.</li>
+        <li><strong>Breathe</strong> — gentle slow fade in and out.</li>
+        <li><strong>Twinkle</strong> — soft random sparkles, like fireflies.</li>
+        <li><strong>Fire 2012</strong> — warm flickering, like candles.</li>
+        <li><strong>Sunrise</strong> — slowly brightens from dark to bright. Nice as a wake-up effect.</li>
+      </ul>
+    </div>
+    <div class="guide__demo">
+      <div class="phone">
+        <div class="phone__screen is-mock">
+          <section class="card">
+            <label class="card__label">Effect</label>
+            <ul class="effects" role="listbox">
+              <li class="effect">Solid</li>
+              <li class="effect is-on">Breathe</li>
+              <li class="effect">Wipe</li>
+              <li class="effect">Twinkle</li>
+              <li class="effect">Chase</li>
+              <li class="effect">Fire 2012</li>
+              <li class="effect">Sunrise</li>
+              <li class="effect">Pacifica</li>
+              <li class="effect">Starburst</li>
+              <li class="effect">Bouncing Balls</li>
+            </ul>
+          </section>
+        </div>
+      </div>
+      <p class="phone__caption">"Breathe" is selected — it glows amber.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="guide__section" id="section-timer">
+    <div class="guide__text">
+      <h2><span class="num">7.</span> "Turn off in…" — auto-shutoff timer</h2>
+      <p>Use this when you want the sign on for a while and then off — without remembering to come back and turn it off.</p>
+      <p>Tap one of:</p>
+      <ul>
+        <li><strong>Never</strong> — stays on until you turn it off.</li>
+        <li><strong>1 hr / 4 hr / 12 hr</strong> — fades off automatically after that many hours.</li>
+      </ul>
+      <p>Tap <strong>Never</strong> to cancel.</p>
+    </div>
+    <div class="guide__demo">
+      <div class="phone">
+        <div class="phone__screen is-mock">
+          <section class="card">
+            <label class="card__label">Turn off in</label>
+            <div class="timer">
+              <button class="timer__btn">Never</button>
+              <button class="timer__btn">1 hr</button>
+              <button class="timer__btn is-on">4 hr</button>
+              <button class="timer__btn">12 hr</button>
+            </div>
+          </section>
+        </div>
+      </div>
+      <p class="phone__caption">Auto-shutoff in 4 hours.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="guide__section guide__section--demo-left" id="section-schedule">
+    <div class="guide__text">
+      <h2><span class="num">8.</span> Setting a daily schedule</h2>
+      <p>If you want the sign to turn itself on and off at the same times every day — for example, on at 6 pm and off at midnight — use this card.</p>
+      <h3>How to set it</h3>
+      <ol>
+        <li>Tap <strong>On at</strong> and pick the time you want the sign to come on each day.</li>
+        <li>Tap <strong>Off at</strong> and pick the time you want it to go off.</li>
+        <li>Tap <strong>Save schedule</strong>.</li>
+      </ol>
+      <p>A confirmation message appears underneath. The sign will now turn itself on and off at those times every day.</p>
+      <p><strong>To change it later:</strong> repeat the same steps with new times and tap Save again — the new schedule replaces the old one.</p>
+      <p><strong>To remove the schedule:</strong> tap <strong>Clear</strong>.</p>
+      <div class="callout">
+        <strong>Important:</strong> the schedule depends on the sign knowing what time it is, which it gets from the internet. If your Wi-Fi or internet is down, the schedule won't work until it comes back. The sign normally syncs its clock every five minutes.
+      </div>
+    </div>
+    <div class="guide__demo">
+      <div class="phone">
+        <div class="phone__screen is-mock">
+          <section class="card">
+            <label class="card__label">Daily schedule</label>
+            <p class="schedule__hint">Turn on at the same time every day, then off at a later time.</p>
+            <div class="schedule">
+              <label class="schedule__row">
+                <span class="schedule__name">On at</span>
+                <input class="schedule__input" type="time" value="18:00">
+              </label>
+              <label class="schedule__row">
+                <span class="schedule__name">Off at</span>
+                <input class="schedule__input" type="time" value="00:00">
+              </label>
+            </div>
+            <div class="schedule__actions">
+              <button class="schedule__btn schedule__btn--primary">Save schedule</button>
+              <button class="schedule__btn">Clear</button>
+            </div>
+            <p class="schedule__status is-ok">Schedule saved. Daily 18:00 → 00:00.</p>
+          </section>
+        </div>
+      </div>
+      <p class="phone__caption">6 pm on, midnight off — saved.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="guide__section" id="section-segments">
+    <div class="guide__text">
+      <h2><span class="num">9.</span> Multi-letter signs <span style="color: var(--guide-muted)">(Sections)</span></h2>
+      <p>If your sign has more than one letter or region — for example a <strong>L-A-B-B</strong> sign — you'll see an extra card at the top called <strong>Section</strong>.</p>
+      <ul>
+        <li><strong>All</strong> (selected by default) — color and effect changes apply to the whole sign.</li>
+        <li><strong>L</strong>, <strong>A</strong>, <strong>B₁</strong>, <strong>B₂</strong>, etc. — tap a letter to change only that letter.</li>
+      </ul>
+      <p>When two or more letters share the same letter (like two B's), they're labeled <strong>B₁</strong> and <strong>B₂</strong> with small subscript numbers so they're easy to tell apart.</p>
+      <p><strong>Switching back to controlling the whole sign:</strong> tap <strong>All</strong>.</p>
+      <div class="callout">
+        Brightness always applies to the whole sign — that's a global setting.
+      </div>
+
+      <h3>Longer signs</h3>
+      <p>For longer signs with five or more sections (a word like <strong>WELCOME</strong>), the Section row collapses so it fits nicely on your screen as <code>[All] [Letters ▸]</code>. Tap <strong>Letters</strong> to open a drawer with individual letter pills. Tap <strong>All</strong> to close it.</p>
+    </div>
+    <div class="guide__demo">
+      <div class="phone">
+        <div class="phone__screen is-mock">
+          <section class="card seg-card">
+            <label class="card__label">Section</label>
+            <div class="seg-pills">
+              <div class="seg-pills__row">
+                <button class="seg-pill is-on">All</button>
+                <button class="seg-pill">L</button>
+                <button class="seg-pill">A</button>
+                <button class="seg-pill">B<sub>1</sub></button>
+                <button class="seg-pill">B<sub>2</sub></button>
+              </div>
+            </div>
+          </section>
+          <section class="card seg-card" style="margin-top: 10px;">
+            <label class="card__label">Section</label>
+            <div class="seg-pills">
+              <div class="seg-pills__row">
+                <button class="seg-pill">All</button>
+                <button class="seg-pill is-on">Letters ▾</button>
+              </div>
+              <div class="seg-pills__row seg-pills__row--expand">
+                <button class="seg-pill">W</button>
+                <button class="seg-pill">E<sub>1</sub></button>
+                <button class="seg-pill">L</button>
+                <button class="seg-pill">C</button>
+                <button class="seg-pill">O</button>
+                <button class="seg-pill">M</button>
+                <button class="seg-pill">E<sub>2</sub></button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <p class="phone__caption">A 4-letter sign (top) and a 7-letter sign with its Letters drawer open (bottom).</p>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="guide__section guide__section--demo-left" id="section-trouble">
+    <div class="guide__text">
+      <h2><span class="num">10.</span> Troubleshooting</h2>
+
+      <h3>The page won't load</h3>
+      <ul>
+        <li>Make sure your phone is connected to the <strong>same Wi-Fi network</strong> as the sign — your home Wi-Fi, not a guest network or your phone's cellular data.</li>
+        <li>Try the other address your installer gave you. Sometimes the name (<code>your-sign.local</code>) works and sometimes the number address works better.</li>
+        <li>If the sign was unplugged or just turned back on, wait about a minute and try again.</li>
+      </ul>
+
+      <h3>"Reconnecting…" message at the top</h3>
+      <p>Your phone briefly lost contact with the sign. It usually clears on its own within a few seconds. If it stays for more than a minute, refresh the page.</p>
+
+      <h3>The daily schedule isn't firing</h3>
+      <p>The schedule uses internet time. If your internet has been down, give it five minutes after the connection is back, then check the schedule. If the times still look wrong, contact your installer.</p>
+
+      <h3>Colors look different than I picked</h3>
+      <p>LED brightness affects how colors appear — at very low brightness, deep reds and blues can look washed out. Try raising the brightness slider. If the issue stays, contact your installer.</p>
+
+      <h3>Something else seems wrong</h3>
+      <p>Contact your installer — they have a settings menu (behind that gear icon) where they can check on things and reset the sign if needed.</p>
+
+      <h3>A note on power</h3>
+      <ul>
+        <li><strong>Don't unplug and re-plug rapidly.</strong> Wait 10 seconds between plug cycles.</li>
+        <li>The sign will return to its last state when power comes back on — same color, same effect, same brightness.</li>
+        <li>If you have a smart outlet or wall switch, you can use that to cut power overnight. The sign saves your settings and resumes when power returns.</li>
+      </ul>
+    </div>
+    <div class="guide__demo">
+      <div class="phone">
+        <div class="phone__screen is-mock">
+          <div class="status" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%);">Reconnecting…</div>
+          <header class="header" style="opacity: 0.5;">
+            <h1 class="brand">
+              <span class="brand__main">WLED</span><span class="brand__mark">·</span><em class="brand__sub">lite</em>
+            </h1>
+          </header>
+          <main class="stack" style="opacity: 0.5;">
+            <section class="card power">
+              <button class="power__btn" aria-pressed="false"><span class="power__halo"></span><span class="power__icon"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg></span></button>
+              <p class="power__state">Off</p>
+            </section>
+          </main>
+        </div>
+      </div>
+      <p class="phone__caption">The "Reconnecting…" banner.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="guide__foot">
+  <p>Questions? Contact your installer.</p>
+  <p style="margin-top: 8px; opacity: 0.7;">WLED-Lite — a fork of <a href="https://github.com/wled/WLED">WLED</a>, EUPL-1.2 licensed.</p>
+</footer>
+
+<script src="iro.js"></script>
+<script>
+  // Live color wheel demo — does not talk to any device.
+  if (typeof iro !== 'undefined') {
+    new iro.ColorPicker('#demo-picker', {
+      width: 210,
+      color: '#ff8866',
+      layoutDirection: 'horizontal',
+      wheelLightness: false,
+      wheelAngle: 270,
+      wheelDirection: 'clockwise',
+      layout: [{ component: iro.ui.Wheel }]
+    });
+  }
+</script>
+
+</body>
+</html>
