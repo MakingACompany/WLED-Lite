@@ -621,11 +621,13 @@ void initServer()
     if (captivePortal(request)) return;
     bool forceWelcome = showWelcomePage;
 #ifdef WLED_LITE_SECURITY_GATES
-    // WLED-Lite: force welcome when no PIN is set, even if WiFi is configured.
-    // Ensures the maintainer completes the 3-step wizard on every fresh device.
-    // End user never sees this gate -- by the time they receive the device,
-    // the PIN is set. See docs/ui-split-design.md.
-    if (strlen(settingsPIN) == 0) forceWelcome = true;
+    // WLED-Lite: PIN status is the canonical "onboarded" signal, overriding
+    // upstream's WiFi-keyed `showWelcomePage` (which can be stale after WiFi
+    // is configured at runtime without a reboot). PIN unset = factory state =
+    // force welcome wizard; PIN set = onboarded = always serve the slim UI.
+    // Bench-tested: this prevents the welcome page from re-appearing after
+    // the user has completed all three wizard steps.
+    forceWelcome = (strlen(settingsPIN) == 0);
 #endif
     if (!forceWelcome || request->hasArg(F("sliders"))) {
       handleStaticContent(request, F("/index.htm"), 200, FPSTR(CONTENT_TYPE_HTML), PAGE_index, PAGE_index_length);
