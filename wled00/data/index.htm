@@ -25,6 +25,12 @@
 
 <main class="stack">
 
+  <!-- Segment selector. Hidden if the device only has one segment. -->
+  <section id="seg-card" class="card seg-card" hidden>
+    <label class="card__label">Section</label>
+    <div id="seg-pills" class="seg-pills" role="tablist" aria-label="Segments"></div>
+  </section>
+
   <section class="card power">
     <button id="power" class="power__btn" aria-pressed="false" aria-label="Power">
       <span class="power__halo"></span>

@@ -339,6 +339,9 @@ static bool captivePortal(AsyncWebServerRequest *request)
 #ifdef WLED_LITE_SCHEDULE
 #include "wled_lite_schedule.h"
 #endif
+#ifdef WLED_LITE_SEGMENTS
+#include "wled_lite_segments.h"
+#endif
 
 void initServer()
 {
@@ -349,6 +352,9 @@ void initServer()
 
 #ifdef WLED_LITE_SCHEDULE
   WLEDLiteSchedule::registerEndpoint(server);
+#endif
+#ifdef WLED_LITE_SEGMENTS
+  WLEDLiteSegments::registerEndpoint(server);
 #endif
 
 #ifdef WLED_ENABLE_WEBSOCKETS

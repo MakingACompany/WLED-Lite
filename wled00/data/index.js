@@ -13,6 +13,10 @@
   let lastColorSendAt = 0;
   let suppressColorPush = false; // when applying remote state, don't echo back
   let effectsLoaded = false;
+  // Segment routing. `null` = apply to all segments. Otherwise the target
+  // segment id (number). Discovered from /json/state on load + every push.
+  let segments = [];     // [{id, n}], filtered to entries with stop > start
+  let activeSegId = null;
 
   const $ = (id) => document.getElementById(id);
   const statusEl = $('status');
@@ -25,7 +29,25 @@
   const devName = $('dev-name');
 
   // ---------- API ----------
+  // Rewrites the `seg` field of a payload so the change targets the segment
+  // the user has selected via the segment pill (or all segments when "All"
+  // is selected). Brightness `bri` stays global -- it's a per-device value
+  // in WLED's model, not per-segment.
+  function routedPayload(payload) {
+    if (!payload || !payload.seg) return payload;
+    if (segments.length < 2) return payload;        // single-segment device: leave it alone
+    const segPatch = payload.seg;
+    if (activeSegId === null) {
+      // "All" -> broadcast to every known segment id
+      payload.seg = segments.map(s => Object.assign({ id: s.id }, segPatch));
+    } else {
+      payload.seg = [Object.assign({ id: activeSegId }, segPatch)];
+    }
+    return payload;
+  }
+
   function send(payload) {
+    payload = routedPayload(payload);
     if (wsReady && ws.readyState === 1) {
       try { ws.send(JSON.stringify(payload)); return; } catch (e) {}
     }
@@ -99,8 +121,23 @@
       briSlider.value = s.bri;
       briVal.textContent = Math.round(s.bri / 2.55) + '%';
     }
-    // segment 0 = the user-facing segment
-    const seg = (s.seg && (s.seg[0] || (Array.isArray(s.seg) === false ? s.seg : null))) || null;
+    // Discover segments and (re)render the selector if needed.
+    if (Array.isArray(s.seg)) {
+      const next = s.seg
+        .filter(x => x && typeof x.id === 'number' && (x.stop > x.start))
+        .map(x => ({ id: x.id, n: (x.n && x.n.trim()) || ('Segment ' + (x.id + 1)) }));
+      // Re-render only if the segment set actually changed (avoid layout thrash)
+      const sig = next.map(x => x.id + ':' + x.n).join('|');
+      if (sig !== segments.map(x => x.id + ':' + x.n).join('|')) {
+        segments = next;
+        renderSegPills();
+      }
+    }
+    // Pick which segment's state drives the displayed color / effect.
+    const activeSeg = (activeSegId === null
+      ? (s.seg && s.seg[0])
+      : (Array.isArray(s.seg) ? s.seg.find(x => x.id === activeSegId) : null));
+    const seg = activeSeg || (Array.isArray(s.seg) ? s.seg[0] : s.seg) || null;
     if (seg) {
       // primary color -> color picker (without echoing back)
       const c0 = seg.col && seg.col[0];
@@ -198,6 +235,43 @@
         send({ nl: { on: true, dur: min, mode: 1, tbri: 0 } });
       }
     });
+  }
+
+  // ---------- Segment pills ----------
+  function renderSegPills() {
+    const card = $('seg-card');
+    const root = $('seg-pills');
+    if (!card || !root) return;
+    if (segments.length < 2) {
+      card.hidden = true;
+      activeSegId = null;
+      return;
+    }
+    card.hidden = false;
+    // If the active id no longer exists, snap back to "All"
+    if (activeSegId !== null && !segments.find(s => s.id === activeSegId)) {
+      activeSegId = null;
+    }
+    root.innerHTML = '';
+    const mkPill = (id, label) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'seg-pill' + ((id === activeSegId) ? ' is-on' : '');
+      b.dataset.segid = (id === null) ? 'all' : String(id);
+      b.textContent = label;
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(id === activeSegId));
+      b.addEventListener('click', () => {
+        activeSegId = (id === null) ? null : id;
+        // Re-render to update is-on state, and re-fetch state so the
+        // displayed color/effect reflect the newly selected segment.
+        renderSegPills();
+        fetch('/json/si').then(r => r.json()).then(j => j && j.state && applyState(j.state)).catch(()=>{});
+      });
+      root.appendChild(b);
+    };
+    mkPill(null, 'All');
+    segments.forEach(s => mkPill(s.id, s.n));
   }
 
   // ---------- Daily schedule ----------
