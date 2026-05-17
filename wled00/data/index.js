@@ -144,7 +144,10 @@
         name = entry.name;
       }
       if (!name) return;
-      if (name === 'Reserved' || name === '-' || name[0] === '-') return;
+      // Filter out firmware-side _data_RESERVED slots ("RSVD") -- these are
+      // effects the WLED_LITE_FX_TRIM keepers list removed from the curated
+      // set. Also catch any legacy "Reserved" or "-..." placeholders.
+      if (name === 'RSVD' || name === 'Reserved' || name === '-' || name[0] === '-') return;
       // strip @param-spec used by upstream FX data strings (e.g. "Blink@!,Duty cycle;...")
       const at = name.indexOf('@');
       if (at >= 0) name = name.substring(0, at);

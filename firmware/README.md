@@ -38,7 +38,7 @@ Replace `COM3` with the actual COM port from Device Manager.
 - **Brand:** `WLED-Lite` (overrides upstream `WLED`). Default AP SSID becomes `WLED-Lite-AP`.
 - **Build commit:** matches the commit history of this checkout — re-build to capture later commits.
 
-After flashing and connecting WiFi, the welcome wizard walks you through the three-step setup: WiFi → Set admin PIN → Use your sign. Until the admin PIN is set, `/` redirects to `/welcome` (so a fresh device can't be misused on a shared network).
+After flashing, the device exposes a WiFi access point named **`WLED-Lite-AP`** with default password **`wled1234`** (inherited from upstream WLED — having a password prevents anyone in radio range from hijacking a fresh device before its admin PIN is set; change it in `/settings/wifi` after onboarding). Connect to that AP, then the welcome wizard walks you through the three-step setup: WiFi → Set admin PIN → Use your sign. Until the admin PIN is set, `/` redirects to `/welcome` (so a fresh device can't be misused on a shared network).
 
 ## Re-generating these files
 

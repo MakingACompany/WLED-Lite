@@ -120,7 +120,7 @@ WLED is **EUPL v1.2 or later** (copyleft). WLED-Lite must:
 
 Compile-time build of `xiao_esp32s3_plus` was verified (config parses; full `pio run` requires PlatformIO ≥ 6 — the apt-shipped 4.3.4 is too old for the Tasmota platform-espressif32 2024.06 fork that upstream pins to). Hardware checks queued for first XIAO Plus bring-up:
 - USB-CDC programming + serial debug over USB-C
-- Default AP SSID = `WLED-Lite-AP`
+- Default AP SSID = `WLED-Lite-AP`, password `wled1234` (upstream default; change in `/settings/wifi` post-onboarding for shipped devices)
 - About page reflects new product / release name
 - A/B the four S3 envs against the actual board to find which boots reliably (prior bring-up attempt: the obvious 16MB env did not work; a smaller ~4MB build did)
 

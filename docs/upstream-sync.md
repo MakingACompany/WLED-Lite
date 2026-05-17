@@ -161,7 +161,7 @@ python3 ~/.platformio/packages/tool-esptoolpy/esptool.py --chip esp32s3 merge-bi
 
 Before pushing, flash a XIAO Plus and verify:
 
-- Device boots, joins WiFi, exposes `WLED-Lite-AP` on first boot.
+- Device boots, joins WiFi, exposes `WLED-Lite-AP` (password `wled1234`) on first boot.
 - Effect picker shows the expected ~22 curated effects (Task #6).
 - Both buttons respond — short presses cycle effect / palette; long-press btn1 enters brightness mode (Task #8).
 - If an INA219 is wired: `/json/info` shows live current/voltage/power (Task #9).
