@@ -117,14 +117,18 @@ describe('Script', () => {
     await checkIfBuiltFilesExist();
   }
 
-  async function checkIfFileWasNewlyCreated(file) {
-    const modifiedTime = fs.statSync(file).mtimeMs;
-    assert(Date.now() - modifiedTime < 850, file + ' was not modified');
+  async function checkIfFileWasNewlyCreated(file, oldModifiedTime = 0) {
+    const newModifiedTime = fs.statSync(file).mtimeMs;
+    assert(newModifiedTime > oldModifiedTime, file + ' was not modified');
   }
 
   async function testFileModification(sourceFilePath, resultFile) {
     // run cdata.js to ensure html_*.h files are created
     await execPromise('node tools/cdata.js');
+
+    const targetFile = path.join(folderPath, resultFile);
+    // Get the timestamp BEFORE running the script again
+    const oldTime = fs.existsSync(targetFile) ? fs.statSync(targetFile).mtimeMs : 0;
 
     // modify file
     fs.appendFileSync(sourceFilePath, ' ');
@@ -134,7 +138,8 @@ describe('Script', () => {
     // run script cdata.js again and wait for it to finish
     await execPromise('node tools/cdata.js');
 
-    await checkIfFileWasNewlyCreated(path.join(folderPath, resultFile));
+    // Pass the old timestamp into your assertion
+    await checkIfFileWasNewlyCreated(targetFile, oldTime);
   }
 
   describe('should build if', () => {
@@ -157,13 +162,20 @@ describe('Script', () => {
     });
 
     it('script was executed with -f or --force', async () => {
+      const targetFile = path.join(folderPath, 'html_ui.h');
       await execPromise('node tools/cdata.js');
+      
+      // Track timestamp before --force run
+      let oldTime = fs.existsSync(targetFile) ? fs.statSync(targetFile).mtimeMs : 0;
       await new Promise(resolve => setTimeout(resolve, 1000));
       await execPromise('node tools/cdata.js --force');
-      await checkIfFileWasNewlyCreated(path.join(folderPath, 'html_ui.h'));
+      await checkIfFileWasNewlyCreated(targetFile, oldTime);
+      
+      // Track timestamp before -f run
+      oldTime = fs.statSync(targetFile).mtimeMs;
       await new Promise(resolve => setTimeout(resolve, 1000));
       await execPromise('node tools/cdata.js -f');
-      await checkIfFileWasNewlyCreated(path.join(folderPath, 'html_ui.h'));
+      await checkIfFileWasNewlyCreated(targetFile, oldTime);
     });
 
     it('a file changes', async () => {
