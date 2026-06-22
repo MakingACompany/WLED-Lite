@@ -1,111 +1,95 @@
-name: WLED Build
+name: Build WLED-Lite
 
-# Only included into other workflows
+# Builds the three XIAO ESP32-S3 Plus size variants.
+#
+# Every push to main: firmware artifacts stored for 90 days (enough for
+# ongoing development — grab the .bin from the Actions tab and drag to FlashLight).
+#
+# Tagged releases (v*.*.*): artifacts attached permanently to the GitHub Release.
+# This is the "come back in 3 years" archive — no toolchain needed, just download.
+
 on:
-  workflow_call:
-    inputs:
-      release:
-        description: 'Build the release env matrix (uses .github/platformio_release.ini.template)'
-        type: boolean
-        default: false
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:   # allow manual trigger from GitHub Actions UI
+
+# Required to create/update GitHub Releases on tag pushes
+permissions:
+  contents: write
 
 env:
+  # Suppress GitHub Actions Node.js deprecation warnings from upstream actions
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-
-  get_default_envs:
-    name: Gather Environments
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Apply release config
-      if: inputs.release
-      run: cp .github/platformio_release.ini.template platformio_release.ini
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-        cache: 'pip'
-    - name: Install PlatformIO
-      run: pip install -r requirements.txt
-    - name: Get default environments
-      id: envs
-      run: |
-        echo "environments=$(pio project config --json-output | jq -cr '.[0][1][0][1]')" >> $GITHUB_OUTPUT
-    outputs:
-      environments: ${{ steps.envs.outputs.environments }}
-
-
   build:
-    name: Build Environments
+    name: Build ${{ matrix.environment }}
     runs-on: ubuntu-latest
-    needs: get_default_envs
     strategy:
-      fail-fast: false
+      fail-fast: false   # if one size variant fails, keep building the others
       matrix:
-        environment: ${{ fromJSON(needs.get_default_envs.outputs.environments) }}
-    steps:
-    - uses: actions/checkout@v4
-    - name: Apply release config
-      if: inputs.release
-      run: cp .github/platformio_release.ini.template platformio_release.ini
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version-file: '.nvmrc'
-        cache: 'npm'
-    - run: |
-        npm ci
-        VERSION=`date +%y%m%d0`
-        sed -i -r -e "s/define VERSION .+/define VERSION $VERSION/" wled00/wled.h
-    - name: Cache PlatformIO
-      uses: actions/cache@v4
-      with:
-        path: |
-              ~/.platformio/.cache
-              ~/.buildcache
-              build_output
-        key: pio-${{ runner.os }}-${{ matrix.environment }}-${{ hashFiles('platformio.ini', '.github/platformio_release.ini.template', 'pio-scripts/output_bins.py') }}-${{ hashFiles('wled00/**', 'usermods/**') }}
-        restore-keys: pio-${{ runner.os }}-${{ matrix.environment }}-${{ hashFiles('platformio.ini', '.github/platformio_release.ini.template', 'pio-scripts/output_bins.py') }}-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-          python-version: '3.12'
-          cache: 'pip'
-    - name: Install PlatformIO
-      run: pip install -r requirements.txt
+        environment:
+          - xiao_esp32s3_plus        # primary target — 16 MB QIO flash
+          - xiao_esp32s3_plus_8MB    # 8 MB variant (A/B testing)
+          - xiao_esp32s3_plus_4M     # 4 MB variant (A/B testing)
 
-    - name: Build firmware
-      run: pio run -e ${{ matrix.environment }}
-    - name: Get artifact name from bin filename
-      id: artifact_name
-      run: |
-        bin=$(ls build_output/release/*.bin 2>/dev/null | head -1)
-        if [ -n "$bin" ]; then
-          # Strip WLED_<version>_ prefix from WLED_<version>_<RELEASE_NAME>.bin
-          base=$(basename "$bin" .bin)
-          release_name=$(echo "$base" | sed 's/^[^_]*_[^_]*_//')
-          echo "name=firmware-$release_name" >> $GITHUB_OUTPUT
-        else
-          echo "name=firmware-${{ matrix.environment }}" >> $GITHUB_OUTPUT
-        fi
-    - uses: actions/upload-artifact@v4
-      with:
-        name: ${{ steps.artifact_name.outputs.name }}
-        path: |
-          build_output/release/*.bin
-          build_output/release/*_ESP02*.bin.gz
-
-
-  testCdata:
-    name: Test cdata.js
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js
+
+      # WLED's web UI is built from source via npm (minified JS, etc.)
+      # build_ui.py pre-build script invokes this automatically.
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: '.nvmrc'   # pins to 20.18 (checked in)
           cache: 'npm'
-      - run: npm ci
-      - run: npm test
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      # Cache the downloaded toolchain, platforms, and compiled libraries.
+      # Key includes platformio.ini hash so a library/platform update invalidates
+      # the cache and forces a clean re-download.
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio/.cache
+            ~/.buildcache
+            build_output
+          key: pio-${{ runner.os }}-${{ matrix.environment }}-${{ hashFiles('platformio.ini') }}-${{ hashFiles('wled00/**') }}
+          restore-keys: |
+            pio-${{ runner.os }}-${{ matrix.environment }}-${{ hashFiles('platformio.ini') }}-
+
+      - name: Install PlatformIO
+        run: pip install -r requirements.txt
+
+      - name: Build firmware
+        run: pio run -e ${{ matrix.environment }}
+
+      # output_bins.py post-build script renames and copies built .bin files
+      # into build_output/release/ with descriptive names like
+      # WLED_0.0.0_XIAO_ESP32S3_LITE.bin
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.environment }}-${{ github.sha }}
+          path: build_output/release/*.bin
+          if-no-files-found: warn   # don't fail if post-script didn't run
+
+      # On a tagged release, attach the .bin files to the GitHub Release page.
+      # These are stored permanently and are the "grab it in 3 years" archive.
+      - name: Attach firmware to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build_output/release/*.bin
