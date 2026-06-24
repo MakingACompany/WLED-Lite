@@ -1,12 +1,13 @@
 name: Build WLED-Lite
 
-# Builds the three XIAO ESP32-S3 Plus size variants.
+# Single build target: Seeed XIAO ESP32-S3 Plus (16 MB, xiao_esp32s3_plus).
 #
-# Every push to main: firmware artifacts stored for 90 days (enough for
-# ongoing development — grab the .bin from the Actions tab and drag to FlashLight).
+# Every push to main: firmware artifact stored for 90 days.
+# Tagged releases (v*.*.*): .bin attached permanently to GitHub Release.
 #
-# Tagged releases (v*.*.*): artifacts attached permanently to the GitHub Release.
-# This is the "come back in 3 years" archive — no toolchain needed, just download.
+# To OTA-update a running device via FlashLight:
+#   Download firmware artifact → drag WLED_*_XIAO_ESP32S3_LITE.bin to
+#   http://flashlight.local/flash.html
 
 on:
   push:
@@ -14,37 +15,27 @@ on:
     tags: ['v*.*.*']
   pull_request:
     branches: [main]
-  workflow_dispatch:   # allow manual trigger from GitHub Actions UI
+  workflow_dispatch:
 
-# Required to create/update GitHub Releases on tag pushes
 permissions:
   contents: write
 
 env:
-  # Suppress GitHub Actions Node.js deprecation warnings from upstream actions
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
-    name: Build ${{ matrix.environment }}
+    name: Build xiao_esp32s3_plus
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false   # if one size variant fails, keep building the others
-      matrix:
-        environment:
-          - xiao_esp32s3_plus        # primary target — 16 MB QIO flash
-          - xiao_esp32s3_plus_8MB    # 8 MB variant (A/B testing)
-          - xiao_esp32s3_plus_4M     # 4 MB variant (A/B testing)
 
     steps:
       - uses: actions/checkout@v4
 
-      # WLED's web UI is built from source via npm (minified JS, etc.)
-      # build_ui.py pre-build script invokes this automatically.
+      # WLED's web UI is built from source via npm (build_ui.py pre-build script)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'   # pins to 20.18 (checked in)
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install npm dependencies
@@ -54,11 +45,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: 'pip'
 
-      # Cache the downloaded toolchain, platforms, and compiled libraries.
-      # Key includes platformio.ini hash so a library/platform update invalidates
-      # the cache and forces a clean re-download.
       - name: Cache PlatformIO packages
         uses: actions/cache@v4
         with:
@@ -66,28 +53,23 @@ jobs:
             ~/.platformio/.cache
             ~/.buildcache
             build_output
-          key: pio-${{ runner.os }}-${{ matrix.environment }}-${{ hashFiles('platformio.ini') }}-${{ hashFiles('wled00/**') }}
+          key: pio-${{ runner.os }}-xiao_esp32s3_plus-${{ hashFiles('platformio.ini') }}-${{ hashFiles('wled00/**') }}
           restore-keys: |
-            pio-${{ runner.os }}-${{ matrix.environment }}-${{ hashFiles('platformio.ini') }}-
+            pio-${{ runner.os }}-xiao_esp32s3_plus-${{ hashFiles('platformio.ini') }}-
 
       - name: Install PlatformIO
         run: pip install -r requirements.txt
 
       - name: Build firmware
-        run: pio run -e ${{ matrix.environment }}
+        run: pio run -e xiao_esp32s3_plus
 
-      # output_bins.py post-build script renames and copies built .bin files
-      # into build_output/release/ with descriptive names like
-      # WLED_0.0.0_XIAO_ESP32S3_LITE.bin
-      - name: Upload build artifacts
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-${{ matrix.environment }}-${{ github.sha }}
+          name: wled-lite-${{ github.sha }}
           path: build_output/release/*.bin
-          if-no-files-found: warn   # don't fail if post-script didn't run
+          if-no-files-found: warn
 
-      # On a tagged release, attach the .bin files to the GitHub Release page.
-      # These are stored permanently and are the "grab it in 3 years" archive.
       - name: Attach firmware to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
