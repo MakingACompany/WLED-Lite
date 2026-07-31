@@ -85,3 +85,39 @@ If you still want to try, don't use strobe, lighting or noise modes or high effe
 
 As per the EUPL license, I assume no liability for any damage to you or any other person or equipment.  
 
+
+---
+
+## WLED-Lite: Hardware Modules (Usermods)
+
+This fork ships with a curated set of usermods. Two are active by default; the rest are available and can be enabled by adding them to `custom_usermods` in `platformio.ini`.
+
+### Active
+| Usermod | What it does |
+|---|---|
+| `audioreactive` | Drives LED effects from microphone/line-in audio input |
+| `INA219` | Monitors LED strip power draw via I2C current sensor |
+
+### Available (not currently enabled)
+| Usermod | What it does |
+|---|---|
+| `usermod_v2_auto_save` | Saves current state to flash on power loss — LEDs resume where they left off after a reboot |
+| `usermod_v2_brightness_follow_sun` | Auto-dims LEDs at sunset and restores at sunrise using location + time |
+| `Temperature` | Reads a DS18B20 one-wire temperature sensor and exposes it via the WLED info page / API |
+| `rotary_encoder_change_effect` | Physical rotary encoder to cycle through effects |
+| `rgb-rotary-encoder` | Physical rotary encoder to adjust RGB color |
+| `usermod_rotary_brightness_color` | Physical rotary encoder for brightness and color control |
+| `usermod_v2_rotary_encoder_ui_ALT` | Alternative rotary encoder UI with mode switching |
+
+### More usermods from upstream WLED
+The full WLED project maintains 60+ additional usermods covering sensors, displays, integrations, and effects. When adding new hardware or functionality, check the upstream repo first — there may already be a module for it:
+
+**https://github.com/wled-dev/WLED/tree/main/usermods**
+
+Notable ones worth evaluating when the time comes:
+- **Animated_Staircase** — motion-triggered step-by-step staircase lighting
+- **PIR_sensor_switch** — motion-activated on/off
+- **BME280_v2 / SHT** — temperature + humidity sensors
+- **RTC** — real-time clock for time-based automations
+- **Multi_relay** — control external relays from WLED
+- **usermod_v2_four_line_display_ALT** — OLED/LCD display for status info
