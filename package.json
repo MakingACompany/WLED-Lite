@@ -1,6 +1,6 @@
 {
   "name": "wled-lite",
-  "version": "0.1.0-lite",
+  "version": "0.1.1-lite",
   "description": "Tools for WLED-Lite, a simplified, hardware-focused fork of WLED",
   "main": "tools/cdata.js",
   "directories": {
