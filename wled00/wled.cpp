@@ -1,7 +1,6 @@
 #define WLED_DEFINE_GLOBAL_VARS //only in one source file, wled.cpp!
 #include "wled.h"
 #include "wled_ethernet.h"
-#include "ota_update.h"
 #ifdef WLED_ENABLE_AOTA
   #define NO_OTA_PORT
   #include <ArduinoOTA.h>
@@ -11,8 +10,31 @@
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 #endif
+#ifndef ESP8266
+#include <esp_ota_ops.h>
+#endif
 
 extern "C" void usePWMFixedNMI();
+
+#ifndef ESP8266
+// Marks the currently running OTA app partition valid, cancelling any pending
+// auto-rollback (relevant if the bootloader/sdkconfig has rollback-on-failure
+// enabled for the app0/app1 OTA slots). Moved here from the now-removed
+// ota_update.cpp -- this has nothing to do with the WebBase-owned /ota upload
+// route, it's a boot-time safety confirmation unrelated to WiFi/OTA-transport.
+static void markOTAvalid() {
+  const esp_partition_t* running = esp_ota_get_running_partition();
+  esp_ota_img_states_t ota_state;
+  if (esp_ota_get_state_partition(running, &ota_state) == ESP_OK) {
+    if (ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
+      esp_ota_mark_app_valid_cancel_rollback(); // only needs to be called once, it marks the ota_state as ESP_OTA_IMG_VALID
+      DEBUG_PRINTLN(F("Current firmware validated"));
+    }
+  }
+}
+#else
+static void markOTAvalid() {}
+#endif
 
 /*
  * Main WLED class implementation. Mostly initialization and connection logic
@@ -61,11 +83,9 @@ void WLED::loop()
   #ifndef WLED_DISABLE_INFRARED
   handleIR();        // 2nd call to function needed for ESP32 to return valid results -- should be good for ESP8266, too
   #endif
-  handleConnection();
   #ifdef WLED_ENABLE_ADALIGHT
   handleSerial();
   #endif
-  handleImprovWifiScan();
   handleNotifications();
   handleTransitions();
   #ifdef WLED_ENABLE_DMX
@@ -108,7 +128,7 @@ void WLED::loop()
   #endif
   if (!realtimeMode || realtimeOverride || (realtimeMode && useMainSegmentOnly))  // block stuff if WARLS/Adalight is enabled
   {
-    if (apActive) dnsServer.processNextRequest();
+    if (webbase.apActive()) dnsServer.processNextRequest();
     #ifdef WLED_ENABLE_AOTA
     if (Network.isConnected() && aOtaEnabled && !otaLock && correctPIN) ArduinoOTA.handle();
     #endif
@@ -203,7 +223,6 @@ void WLED::loop()
         DEBUG_PRINTF_P(PSTR("Heap panic! Reset strip, reset connection\n"));
         strip.~WS2812FX();      // deallocate strip and all its memory
         new(&strip) WS2812FX(); // re-create strip object, respecting current memory limits
-        if (!Update.isRunning()) forceReconnect = true; // in case wifi is broken, make sure UI comes back, set disableForceReconnect = true to avert
         errorFlag = ERR_NORAM; // alert UI  TODO: make this a distinct error: strip reset
         break;
       default:
@@ -387,6 +406,15 @@ void WLED::setup()
   #if !defined(WLED_DEBUG) && defined(ARDUINO_ARCH_ESP32) && !defined(WLED_DEBUG_HOST) && ARDUINO_USB_CDC_ON_BOOT
   Serial.setDebugOutput(false); // switch off kernel messages when using USBCDC
   #endif
+
+  // WebBase: factory-mode button check, then WiFi from NVS (connect to a
+  // saved network or fall back to its own AP). Runs before WLED_FS.begin()
+  // and everything else in this function -- WebBase::begin() only touches
+  // Preferences/WiFi/MDNS, never LittleFS, so there's no hard ordering
+  // dependency, but doing it first resolves online/AP state before WLED's
+  // slower FS/strip/usermod init runs (matches Core's own main.cpp ordering).
+  webbase.begin();
+
   DEBUG_PRINTLN();
   DEBUG_PRINTF_P(PSTR("---WLED %s %u INIT---\n"), versionString, VERSION);
   DEBUG_PRINTLN();
@@ -467,13 +495,11 @@ void WLED::setup()
   initPresetsFile();
   updateFSInfo();
 
-  // generate module IDs must be done before AP setup
+  // generate module IDs (WiFi radio is already up -- WebBase's begin() above
+  // already called WiFi.mode(), so macAddress() is valid here)
   escapedMac = WiFi.macAddress();
   escapedMac.replace(":", "");
   escapedMac.toLowerCase();
-
-  WLED_SET_AP_SSID(); // otherwise it is empty on first boot until config is saved
-  multiWiFi.push_back(WiFiConfig(CLIENT_SSID,CLIENT_PASS)); // initialise vector with default WiFi
 
   if(!verifyConfig()) {
     if(!restoreConfig()) {
@@ -503,30 +529,28 @@ void WLED::setup()
 
   if (needsCfgSave) serializeConfigToFS(); // usermods required new parameters; need to wait for strip to be initialised #4752
 
-  if (strcmp(multiWiFi[0].clientSSID, DEFAULT_CLIENT_SSID) == 0 && !configBackupExists())
+  // WLED-Lite: a device is considered "still in first-run setup" if it has
+  // never actually gotten onto WiFi (webbase.online()) and has no backup
+  // config yet -- WiFi credentials themselves are no longer WLED's concern
+  // (see WebBase), so "never configured" is now expressed as "never connected".
+  if (!webbase.online() && !configBackupExists())
     showWelcomePage = true;
 
-  #ifndef ESP8266
-  WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
-  WiFi.persistent(true); // storing credentials in NVM fixes boot-up pause as connection is much faster, is disabled after first connection
-  // ESP32 DNS name must be set before the first connection to the DHCP server; otherwise, the default ESP name (such as "esp32s3-267D0C") will be used.
-  char hostname[64] = {'\0'};
-  getWLEDhostname(hostname, sizeof(hostname), true);   // create DNS name based on mDNS name if set, or fall back to standard WLED server name
-  WiFi.setHostname(hostname);
-  #else
-  WiFi.persistent(false); // on ESP8266 using NVM for wifi config has no benefit of faster connection
-  #endif
-  WiFi.onEvent(WiFiEvent);
-  WiFi.mode(WIFI_STA); // enable scanning
-  findWiFi(true);      // start scanning for available WiFi-s
+  // NOTE: WiFi mode/hostname/persistence/connection are entirely WebBase's
+  // responsibility now (see webbase.begin() above, near the top of setup()).
+  // WLED no longer sets its own hostname here -- by the time we reach this
+  // point, WebBase has already associated (or opened its AP) using its own
+  // device name, and changing the hostname post-connection would require
+  // tearing down and re-establishing the link, which is exactly the kind of
+  // duplicate WiFi-management logic this migration removes.
 
   // all GPIOs are allocated at this point
   serialCanRX = !PinManager::isPinAllocated(hardwareRX); // Serial RX pin (GPIO 3 on ESP32 and ESP8266)
   serialCanTX = !PinManager::isPinAllocated(hardwareTX) || PinManager::getPinOwner(hardwareTX) == PinOwner::DebugOut; // Serial TX pin (GPIO 1 on ESP32 and ESP8266)
 
   #ifdef WLED_ENABLE_ADALIGHT
-  //Serial RX (Adalight, Improv, Serial JSON) only possible if GPIO3 unused
-  //Serial TX (Debug, Improv, Serial JSON) only possible if GPIO1 unused
+  //Serial RX (Adalight, Serial JSON) only possible if GPIO3 unused
+  //Serial TX (Debug, Serial JSON) only possible if GPIO1 unused
   if (serialCanRX && serialCanTX) {
     Serial.println(F("Ada"));
   }
@@ -567,14 +591,16 @@ void WLED::setup()
   dmxInput.init(dmxInputReceivePin, dmxInputTransmitPin, dmxInputEnablePin, dmxInputPort);
 #endif
 
-#ifdef WLED_ENABLE_ADALIGHT
-  if (serialCanRX && Serial.available() > 0 && Serial.peek() == 'I') handleImprovPacket();
-#endif
-
   // HTTP server page init
   DEBUG_PRINTLN(F("initServer"));
   initServer();
   DEBUG_PRINTF_P(PSTR("heap %u\n"), getFreeHeapSize());
+
+  // Bring up UDP/E1.31/DDP/mDNS/server.begin() (and, only if WebBase is
+  // currently in AP mode, the captive-portal DNS server) -- see initNetworkServices()
+  // in wled.h for why this is a single unconditional call instead of the old
+  // reconnect-driven initAP()/initConnection()/handleConnection() machinery.
+  initNetworkServices();
 
 #ifndef WLED_DISABLE_INFRARED
   // init IR
@@ -649,219 +675,13 @@ void WLED::beginStrip()
   strip.setTransition(transitionDelayDefault);  // restore transitions
 }
 
-void WLED::initAP(bool resetAP)
+void WLED::initNetworkServices()
 {
-  if (apBehavior == AP_BEHAVIOR_BUTTON_ONLY && !resetAP)
-    return;
-
-  if (resetAP) {
-    WLED_SET_AP_SSID();
-    strcpy_P(apPass, PSTR(WLED_AP_PASS));
-  }
-  DEBUG_PRINT(F("Opening access point "));
-  DEBUG_PRINTLN(apSSID);
-  WiFi.mode(WIFI_AP);
-  WiFi.softAPConfig(IPAddress(4, 3, 2, 1), IPAddress(4, 3, 2, 1), IPAddress(255, 255, 255, 0));
-  WiFi.softAP(apSSID, apPass, apChannel, apHide);
-  #ifdef ARDUINO_ARCH_ESP32
-  WiFi.setTxPower(wifi_power_t(txPower));
-  #endif
-
-  if (!apActive) // start captive portal if AP active
-  {
-    DEBUG_PRINTLN(F("Init AP interfaces"));
-    server.begin();
-    if (udpPort > 0 && udpPort != ntpLocalPort) {
-      udpConnected = notifierUdp.begin(udpPort);
-    }
-    if (udpRgbPort > 0 && udpRgbPort != ntpLocalPort && udpRgbPort != udpPort) {
-      udpRgbConnected = rgbUdp.begin(udpRgbPort);
-    }
-    if (udpPort2 > 0 && udpPort2 != ntpLocalPort && udpPort2 != udpPort && udpPort2 != udpRgbPort) {
-      udp2Connected = notifier2Udp.begin(udpPort2);
-    }
-    e131.begin(false, e131Port, e131Universe, E131_MAX_UNIVERSE_COUNT);
-    ddp.begin(false, DDP_DEFAULT_PORT);
-
-    dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
-    dnsServer.start(53, "*", WiFi.softAPIP());
-  }
-  apActive = true;
-}
-
-void WLED::initConnection()
-{
-  DEBUG_PRINTF_P(PSTR("initConnection() called @ %lus.\n"), millis()/1000);
+  DEBUG_PRINTF_P(PSTR("initNetworkServices() called @ %lus.\n"), millis()/1000);
   #ifdef WLED_ENABLE_WEBSOCKETS
   ws.onEvent(wsEvent);
   #endif
 
-#ifndef WLED_DISABLE_ESPNOW
-  if (statusESPNow == ESP_NOW_STATE_ON) {
-    DEBUG_PRINTLN(F("ESP-NOW stopping."));
-    quickEspNow.stop();
-    statusESPNow = ESP_NOW_STATE_UNINIT;
-  }
-#endif
-
-  WiFi.disconnect(true); // close old connections
-  delay(5);              // wait for hardware to be ready
-#ifdef ESP8266
-  WiFi.setPhyMode(force802_3g ? WIFI_PHY_MODE_11G : WIFI_PHY_MODE_11N);
-#endif
-
-  char hostname[64] = {'\0'};
-  getWLEDhostname(hostname, sizeof(hostname), true); // create DNS name based on mDNS name if set, or fall back to standard WLED server name
-
-#ifdef ARDUINO_ARCH_ESP32
-  // Reset mode to NULL to force a full STA mode transition, so that WiFi.mode(WIFI_STA) below actually applies the hostname (and TX power, etc.).
-  // This is required on reconnects when mode is already WIFI_STA.
-  WiFi.mode(WIFI_MODE_NULL);
-  apActive = false;           // the AP is physically torn down by WIFI_MODE_NULL
-  delay(5);                   // give the WiFi stack time to complete the mode transition
-  WiFi.setHostname(hostname);
-#endif
-
-  if (multiWiFi[selectedWiFi].staticIP != 0U && multiWiFi[selectedWiFi].staticGW != 0U) {
-    WiFi.config(multiWiFi[selectedWiFi].staticIP, multiWiFi[selectedWiFi].staticGW, multiWiFi[selectedWiFi].staticSN, dnsAddress);
-  } else {
-    WiFi.config(IPAddress((uint32_t)0), IPAddress((uint32_t)0), IPAddress((uint32_t)0));
-  }
-
-  lastReconnectAttempt = millis();
-
-  if (!WLED_WIFI_CONFIGURED) {
-    DEBUG_PRINTLN(F("No connection configured."));
-    if (!apActive) initAP();        // instantly go to ap mode
-  } else if (!apActive) {
-    if (apBehavior == AP_BEHAVIOR_ALWAYS) {
-      DEBUG_PRINTLN(F("Access point ALWAYS enabled."));
-      initAP();
-    } else {
-      DEBUG_PRINTLN(F("Access point disabled (init)."));
-      WiFi.softAPdisconnect(true);
-      WiFi.mode(WIFI_STA);
-    }
-  }
-
-  if (WLED_WIFI_CONFIGURED) {
-    showWelcomePage = false;
-    
-    DEBUG_PRINTF_P(PSTR("Connecting to %s...\n"), multiWiFi[selectedWiFi].clientSSID);
-
-#ifdef WLED_ENABLE_WPA_ENTERPRISE
-    if (multiWiFi[selectedWiFi].encryptionType == WIFI_ENCRYPTION_TYPE_PSK) {
-      DEBUG_PRINTLN(F("Using PSK"));
-#ifdef ESP8266
-      wifi_station_set_wpa2_enterprise_auth(0);
-      wifi_station_clear_enterprise_ca_cert();
-      wifi_station_clear_enterprise_cert_key();
-      wifi_station_clear_enterprise_identity();
-      wifi_station_clear_enterprise_username();
-      wifi_station_clear_enterprise_password();
-#endif
-      uint8_t *bssid = nullptr;
-      // check if user BSSID is non zero for current WiFi config
-      for (int i = 0; i < sizeof(multiWiFi[selectedWiFi].bssid); i++) {
-        if (multiWiFi[selectedWiFi].bssid[i] != 0) {
-          bssid = multiWiFi[selectedWiFi].bssid; // BSSID set, assign pointer and continue
-          break;
-        }
-      }
-      WiFi.begin(multiWiFi[selectedWiFi].clientSSID, multiWiFi[selectedWiFi].clientPass, 0, bssid); // no harm if called multiple times
-    } else { // WIFI_ENCRYPTION_TYPE_ENTERPRISE
-      DEBUG_PRINTF_P(PSTR("Using WPA2_AUTH_PEAP (Anon: %s, Ident: %s)\n"), multiWiFi[selectedWiFi].enterpriseAnonIdentity, multiWiFi[selectedWiFi].enterpriseIdentity);
-#ifdef ESP8266
-      struct station_config sta_conf;
-      os_memset(&sta_conf, 0, sizeof(sta_conf));
-      os_memcpy(sta_conf.ssid, multiWiFi[selectedWiFi].clientSSID, 32);
-      os_memcpy(sta_conf.password, multiWiFi[selectedWiFi].clientPass, 64);
-      wifi_station_set_config(&sta_conf);
-      wifi_station_set_wpa2_enterprise_auth(1);
-      wifi_station_set_enterprise_identity((u8*)(void*)multiWiFi[selectedWiFi].enterpriseAnonIdentity, os_strlen(multiWiFi[selectedWiFi].enterpriseAnonIdentity));
-      wifi_station_set_enterprise_username((u8*)(void*)multiWiFi[selectedWiFi].enterpriseIdentity, os_strlen(multiWiFi[selectedWiFi].enterpriseIdentity));
-      wifi_station_set_enterprise_password((u8*)(void*)multiWiFi[selectedWiFi].clientPass, os_strlen(multiWiFi[selectedWiFi].clientPass));
-      wifi_station_connect();
-#else
-      WiFi.begin(multiWiFi[selectedWiFi].clientSSID, WPA2_AUTH_PEAP, multiWiFi[selectedWiFi].enterpriseAnonIdentity, multiWiFi[selectedWiFi].enterpriseIdentity, multiWiFi[selectedWiFi].clientPass);
-#endif
-    }
-#else // WLED_ENABLE_WPA_ENTERPRISE
-    uint8_t *bssid = nullptr;
-    // check if user BSSID is non zero for current WiFi config
-    for (int i = 0; i < sizeof(multiWiFi[selectedWiFi].bssid); i++) {
-      if (multiWiFi[selectedWiFi].bssid[i] != 0) {
-        bssid = multiWiFi[selectedWiFi].bssid; // BSSID set, assign pointer and continue
-        break;
-      }
-    }
-    WiFi.begin(multiWiFi[selectedWiFi].clientSSID, multiWiFi[selectedWiFi].clientPass, 0, bssid); // no harm if called multiple times
-#endif // WLED_ENABLE_WPA_ENTERPRISE
-
-#ifdef ARDUINO_ARCH_ESP32
-    WiFi.setTxPower(wifi_power_t(txPower));
-    WiFi.setSleep(!noWifiSleep);
-#else // ESP8266 accepts a hostname set after WiFi interface initialization
-    wifi_set_sleep_type((noWifiSleep) ? NONE_SLEEP_T : MODEM_SLEEP_T);
-    WiFi.hostname(hostname);
-#endif
-  }
-
-#ifndef WLED_DISABLE_ESPNOW
-  if (enableESPNow) {
-    quickEspNow.onDataSent(espNowSentCB);     // see udp.cpp
-    quickEspNow.onDataRcvd(espNowReceiveCB);  // see udp.cpp
-    bool espNowOK;
-    if (apActive) {
-      DEBUG_PRINTLN(F("ESP-NOW initing in AP mode."));
-      #ifdef ESP32
-      quickEspNow.setWiFiBandwidth(WIFI_IF_AP, WIFI_BW_HT20); // Only needed for ESP32 in case you need coexistence with ESP8266 in the same network
-      #endif //ESP32
-      espNowOK = quickEspNow.begin(apChannel, WIFI_IF_AP);  // Same channel must be used for both AP and ESP-NOW
-    } else {
-      DEBUG_PRINTLN(F("ESP-NOW initing in STA mode."));
-      espNowOK = quickEspNow.begin(); // Use no parameters to start ESP-NOW on same channel as WiFi, in STA mode
-    }
-    statusESPNow = espNowOK ? ESP_NOW_STATE_ON : ESP_NOW_STATE_ERROR;
-  }
-#endif
-}
-
-void WLED::initInterfaces()
-{
-  DEBUG_PRINTLN(F("Init STA interfaces"));
-
-#ifndef WLED_DISABLE_HUESYNC
-  IPAddress ipAddress = Network.localIP();
-  if (hueIP[0] == 0) {
-    hueIP[0] = ipAddress[0];
-    hueIP[1] = ipAddress[1];
-    hueIP[2] = ipAddress[2];
-  }
-#endif
-
-#ifndef WLED_DISABLE_ALEXA
-  // init Alexa hue emulation
-  if (alexaEnabled)
-    alexaInit();
-#endif
-
-#ifdef WLED_ENABLE_AOTA
-  if (aOtaEnabled) ArduinoOTA.begin();
-#endif
-
-  // Set up mDNS responder:
-  if (strlen(cmDNS) > 0) {
-    // "end" must be called before "begin" is called a 2nd time
-    // see https://github.com/esp8266/Arduino/issues/7213
-    MDNS.end();
-    MDNS.begin(cmDNS);
-
-    DEBUG_PRINTLN(F("mDNS started"));
-    MDNS.addService("http", "tcp", 80);
-    MDNS.addService("wled", "tcp", 80);
-    MDNS.addServiceTxt("wled", "tcp", "mac", escapedMac.c_str());
-  }
   server.begin();
 
   if (udpPort > 0 && udpPort != ntpLocalPort) {
@@ -876,127 +696,68 @@ void WLED::initInterfaces()
 
   e131.begin(e131Multicast, e131Port, e131Universe, E131_MAX_UNIVERSE_COUNT);
   ddp.begin(false, DDP_DEFAULT_PORT);
-  reconnectHue();
-  interfacesInited = true;
-  wasConnected = true;
-}
 
-void WLED::handleConnection()
-{
-  static bool scanDone = true;
-  static byte stacO = 0;
-  const unsigned long now = millis();
-  #ifdef WLED_DEBUG
-  const unsigned long nowS = now/1000;
-  #endif
-  const bool wifiConfigured = WLED_WIFI_CONFIGURED;
+  // Set up mDNS responder. WebBase's own begin() already registered a bare
+  // "http" service under its own device name (for AP/onboarding discovery);
+  // this replaces/extends that with WLED's fuller registration (name, "wled"
+  // service, mac txt record) -- safe to do unconditionally, in AP or STA mode.
+  if (strlen(cmDNS) > 0) {
+    // "end" must be called before "begin" is called a 2nd time
+    // see https://github.com/esp8266/Arduino/issues/7213
+    MDNS.end();
+    MDNS.begin(cmDNS);
 
-  if (apBehavior == AP_BEHAVIOR_ALWAYS) {
-    if (!apActive) {
-      initAP();
-    }
-    if (apActive) {
-      dnsServer.processNextRequest();
-    }
-    return;
+    DEBUG_PRINTLN(F("mDNS started"));
+    MDNS.addService("http", "tcp", 80);
+    MDNS.addService("wled", "tcp", 80);
+    MDNS.addServiceTxt("wled", "tcp", "mac", escapedMac.c_str());
   }
 
-  if (lastReconnectAttempt == 0 || forceReconnect) {
-    DEBUG_PRINTF_P(PSTR("Initial connect or forced reconnect (@ %lus).\n"), nowS);
-    selectedWiFi = findWiFi(); // find strongest WiFi
-    initConnection();
-    interfacesInited = false;
-    forceReconnect = false;
-    wasConnected = false;
-    return;
+  // Captive portal DNS -- only meaningful while WebBase is broadcasting its
+  // own setup AP; see captivePortal() in wled_server.cpp for the redirect side.
+  if (webbase.apActive()) {
+    dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
+    dnsServer.start(53, "*", WiFi.softAPIP());
   }
 
-  byte stac = 0;
-  if (apActive) {
-#ifdef ESP8266
-    stac = wifi_softap_get_station_num();
-#else
-    wifi_sta_list_t stationList;
-    esp_wifi_ap_get_sta_list(&stationList);
-    stac = stationList.num;
+#ifdef ARDUINO_ARCH_ESP32
+  WiFi.setTxPower(wifi_power_t(txPower));
+  WiFi.setSleep(!noWifiSleep);
 #endif
-    if (stac != stacO) {
-      stacO = stac;
-      DEBUG_PRINTF_P(PSTR("Connected AP clients: %d\n"), (int)stac);
-      if (!Network.isConnected() && wifiConfigured) {        // trying to connect, but not connected
-        if (stac)
-          WiFi.disconnect();        // disable search so that AP can work
-        else
-          initConnection();         // restart search
-      }
-    }
-  }
 
-  if (!Network.isConnected()) {
-    if (interfacesInited) {
-      if (scanDone && multiWiFi.size() > 1) {
-        DEBUG_PRINTLN(F("WiFi scan initiated on disconnect."));
-        findWiFi(true); // reinit scan
-        scanDone = false;
-        return;         // try to connect in next iteration
-      }
-      DEBUG_PRINTLN(F("Disconnected!"));
-      selectedWiFi = findWiFi();
-      initConnection();
-      interfacesInited = false;
-      scanDone = true;
-      return;
-    }
-    //send improv failed 6 seconds after second init attempt (24 sec. after provisioning)
-    if (improvActive > 2 && now - lastReconnectAttempt > 6000) {
-      sendImprovStateResponse(0x03, true);
-      improvActive = 2;
-    }
-    if (now - lastReconnectAttempt > ((stac) ? 300000 : 18000) && wifiConfigured) {
-      if (improvActive == 2) improvActive = 3;
-      DEBUG_PRINTF_P(PSTR("Last reconnect (%lus) too old (@ %lus).\n"), lastReconnectAttempt/1000, nowS);
-      if (++selectedWiFi >= multiWiFi.size()) selectedWiFi = 0; // we couldn't connect, try with another network from the list
-      initConnection();
-    }
-    if (!apActive && now - lastReconnectAttempt > 12000 && (!wasConnected || apBehavior == AP_BEHAVIOR_NO_CONN)) {
-      if (!(apBehavior == AP_BEHAVIOR_TEMPORARY && now > WLED_AP_TIMEOUT)) {
-        DEBUG_PRINTF_P(PSTR("Not connected AP (@ %lus).\n"), nowS);
-        initAP();  // start AP only within first 5min
-      }
-    }
-    if (apActive && apBehavior == AP_BEHAVIOR_TEMPORARY && now > WLED_AP_TIMEOUT && stac == 0) { // disconnect AP after 5min if no clients connected
-      // if AP was enabled more than 10min after boot or if client was connected more than 10min after boot do not disconnect AP mode
-      if (now < 2*WLED_AP_TIMEOUT) {
-        dnsServer.stop();
-        WiFi.softAPdisconnect(true);
-        apActive = false;
-        DEBUG_PRINTF_P(PSTR("Temporary AP disabled (@ %lus).\n"), nowS);
-      }
-    }
-  } else if (!interfacesInited) { //newly connected
-    DEBUG_PRINTLN();
-    DEBUG_PRINT(F("Connected! IP address: "));
-    DEBUG_PRINTLN(Network.localIP());
-    #ifdef ARDUINO_ARCH_ESP32
-    esp_wifi_set_storage(WIFI_STORAGE_RAM); // disable further updates of NVM credentials to prevent wear on flash (same as WiFi.persistent(false) but updates immediately, arduino wifi deficiency workaround)
+#ifndef WLED_DISABLE_ESPNOW
+  if (enableESPNow) {
+    quickEspNow.onDataSent(espNowSentCB);     // see udp.cpp
+    quickEspNow.onDataRcvd(espNowReceiveCB);  // see udp.cpp
+    #ifdef ESP32
+    if (webbase.apActive()) quickEspNow.setWiFiBandwidth(WIFI_IF_AP, WIFI_BW_HT20); // coexistence with ESP8266 peers, AP mode only
     #endif
-    if (improvActive) {
-      if (improvError == 3) sendImprovStateResponse(0x00, true);
-      sendImprovStateResponse(0x04);
-      if (improvActive > 1) sendImprovIPRPCResult(ImprovRPCType::Command_Wifi);
+    bool espNowOK = quickEspNow.begin(); // no explicit channel: picks up whatever channel WiFi (AP or STA) is already using
+    statusESPNow = espNowOK ? ESP_NOW_STATE_ON : ESP_NOW_STATE_ERROR;
+  }
+#endif
+
+  // The rest only makes sense once actually on the network (not just
+  // broadcasting a setup AP) -- mirrors the old initInterfaces()'s gating,
+  // which only ran once WLED::handleConnection() saw Network.isConnected().
+  if (webbase.online()) {
+#ifndef WLED_DISABLE_HUESYNC
+    IPAddress ipAddress = Network.localIP();
+    if (hueIP[0] == 0) {
+      hueIP[0] = ipAddress[0];
+      hueIP[1] = ipAddress[1];
+      hueIP[2] = ipAddress[2];
     }
-    initInterfaces();
+    reconnectHue();
+#endif
+#ifndef WLED_DISABLE_ALEXA
+    if (alexaEnabled) alexaInit();
+#endif
+#ifdef WLED_ENABLE_AOTA
+    if (aOtaEnabled) ArduinoOTA.begin();
+#endif
     userConnected();
     UsermodManager::connected();
-    lastMqttReconnectAttempt = 0; // force immediate update
-
-    // shut down AP
-    if (apBehavior != AP_BEHAVIOR_ALWAYS && apActive) {
-      dnsServer.stop();
-      WiFi.softAPdisconnect(true);
-      apActive = false;
-      DEBUG_PRINTLN(F("Access point disabled (connected)."));
-    }
   }
 }
 
@@ -1021,7 +782,7 @@ void WLED::handleStatusLED()
   } else if (WLED_MQTT_CONNECTED) {
     c = RGBW32(0,128,0,0);
     ledStatusType = 4;
-  } else if (apActive) {
+  } else if (webbase.apActive()) {
     c = RGBW32(0,0,255,0);
     ledStatusType = 1;
   }

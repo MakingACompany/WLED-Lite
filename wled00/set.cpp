@@ -16,110 +16,19 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
   //0: menu 1: wifi 2: leds 3: ui 4: sync 5: time 6: sec 7: DMX 8: usermods 9: N/A 10: 2D
   if (subPage < 1 || subPage > 10 || !correctPIN) return;
 
-  //WIFI SETTINGS
+  //NETWORK SETTINGS (formerly "WIFI SETTINGS" -- WiFi network list, static
+  //DNS, and AP SSID/password/channel/hide/behavior are no longer read here;
+  //WebBase owns all of that now (see /api/webbase/settings). What's left are
+  //non-credential knobs: mDNS name, radio tuning, ESP-NOW, and (legacy,
+  //normally-uncompiled) Ethernet board type.
   if (subPage == SUBPAGE_WIFI)
   {
-    unsigned cnt = 0;
-    for (size_t n = 0; n < WLED_MAX_WIFI_COUNT; n++) {
-      char cs[4] = "CS"; cs[2] = 48+n; cs[3] = 0; //client SSID
-      char pw[4] = "PW"; pw[2] = 48+n; pw[3] = 0; //client password
-      char bs[4] = "BS"; bs[2] = 48+n; bs[3] = 0; //BSSID
-      char ip[5] = "IP"; ip[2] = 48+n; ip[4] = 0; //IP address
-      char gw[5] = "GW"; gw[2] = 48+n; gw[4] = 0; //GW address
-      char sn[5] = "SN"; sn[2] = 48+n; sn[4] = 0; //subnet mask
-#ifdef WLED_ENABLE_WPA_ENTERPRISE
-      char et[4] = "ET"; et[2] = 48+n; et[3] = 0; //WiFi encryption type
-      char ea[4] = "EA"; ea[2] = 48+n; ea[3] = 0; //enterprise anonymous identity
-      char ei[4] = "EI"; ei[2] = 48+n; ei[3] = 0; //enterprise identity
-#endif
-      if (request->hasArg(cs)) {
-        if (n >= multiWiFi.size()) multiWiFi.emplace_back(); // expand vector by one
-        char oldSSID[33]; strcpy(oldSSID, multiWiFi[n].clientSSID);
-        char oldPass[65]; strcpy(oldPass, multiWiFi[n].clientPass);
-        uint8_t oldBSSID[6]; memcpy(oldBSSID, multiWiFi[n].bssid, 6);  // save old BSSID
-
-        strlcpy(multiWiFi[n].clientSSID, request->arg(cs).c_str(), 33);
-        if (strlen(oldSSID) == 0 || strncmp(multiWiFi[n].clientSSID, oldSSID, 32) != 0) {
-          forceReconnect = true;
-        }
-        if (!isAsterisksOnly(request->arg(pw).c_str(), 65)) {
-          strlcpy(multiWiFi[n].clientPass, request->arg(pw).c_str(), 65);
-          forceReconnect = true;
-        }
-        fillStr2MAC(multiWiFi[n].bssid, request->arg(bs).c_str());
-        if (memcmp(oldBSSID, multiWiFi[n].bssid, 6) != 0) {  // check if BSSID changed
-          forceReconnect = true;
-        }
-        for (size_t i = 0; i < 4; i++) {
-          ip[3] = 48+i;
-          gw[3] = 48+i;
-          sn[3] = 48+i;
-          multiWiFi[n].staticIP[i] = request->arg(ip).toInt();
-          multiWiFi[n].staticGW[i] = request->arg(gw).toInt();
-          multiWiFi[n].staticSN[i] = request->arg(sn).toInt();
-        }
-
-#ifdef WLED_ENABLE_WPA_ENTERPRISE
-        byte oldType = multiWiFi[n].encryptionType;
-        char oldAnon[65]; strcpy(oldAnon, multiWiFi[n].enterpriseAnonIdentity);
-        char oldIden[65]; strcpy(oldIden, multiWiFi[n].enterpriseIdentity);
-        if (request->hasArg(et) && request->hasArg(ea) && request->hasArg(ei)) {
-          multiWiFi[n].encryptionType = request->arg(et).toInt();
-          strlcpy(multiWiFi[n].enterpriseAnonIdentity, request->arg(ea).c_str(), 65);
-          strlcpy(multiWiFi[n].enterpriseIdentity, request->arg(ei).c_str(), 65);
-        } else {
-          // No enterprise settings provided, default to PSK
-          multiWiFi[n].encryptionType = WIFI_ENCRYPTION_TYPE_PSK;
-        }
-
-        if (multiWiFi[n].encryptionType == WIFI_ENCRYPTION_TYPE_PSK) {
-          // PSK - Clear the anonymous identity and identity fields
-          multiWiFi[n].enterpriseAnonIdentity[0] = '\0';
-          multiWiFi[n].enterpriseIdentity[0] = '\0';
-        }
-        forceReconnect |= oldType != multiWiFi[n].encryptionType;
-        if (strncmp(multiWiFi[n].enterpriseAnonIdentity, oldAnon, 64) != 0) {
-          forceReconnect = true;
-        }
-        if (strncmp(multiWiFi[n].enterpriseIdentity, oldIden, 64) != 0) {
-          forceReconnect = true;
-        }
-#endif
-
-        cnt++;
-      }
-    }
-    // remove unused
-    if (cnt < multiWiFi.size()) {
-      cnt = multiWiFi.size() - cnt;
-      while (cnt--) multiWiFi.pop_back();
-      multiWiFi.shrink_to_fit(); // release memory
-    }
-
-    if (request->hasArg(F("D0"))) {
-      dnsAddress = IPAddress(request->arg(F("D0")).toInt(),request->arg(F("D1")).toInt(),request->arg(F("D2")).toInt(),request->arg(F("D3")).toInt());
-    }
-
     strlcpy(cmDNS, request->arg(F("CM")).c_str(), 33);
 
-    if (request->hasArg(F("AO"))) {
-      apBehavior = AP_BEHAVIOR_ALWAYS;
-    } else {
-      apBehavior = request->arg(F("AB")).toInt();
-    }
-    showWelcomePage = !(apBehavior == AP_BEHAVIOR_ALWAYS && strlen(settingsPIN) > 0);
-    char oldSSID[33]; strcpy(oldSSID, apSSID);
-    strlcpy(apSSID, request->arg(F("AS")).c_str(), 33);
-    if (!strcmp(oldSSID, apSSID) && apActive) forceReconnect = true;
-    apHide = request->hasArg(F("AH"));
-    int passlen = request->arg(F("AP")).length();
-    if (passlen == 0 || (passlen > 7 && !isAsterisksOnly(request->arg(F("AP")).c_str(), 65))) {
-      strlcpy(apPass, request->arg(F("AP")).c_str(), 65);
-      forceReconnect = true;
-    }
-    int t = request->arg(F("AC")).toInt();
-    if (t != apChannel) forceReconnect = true;
-    if (t > 0 && t < 14) apChannel = t;
+    // WLED-Lite: welcome-wizard bypass now keys off webbase.online() ("fully
+    // set up and actually on the network") instead of the old
+    // apBehavior==AP_BEHAVIOR_ALWAYS ("our AP happens to be always-on").
+    showWelcomePage = !(webbase.online() && strlen(settingsPIN) > 0);
 
     #ifdef ARDUINO_ARCH_ESP32
     int tx = request->arg(F("TX")).toInt();
@@ -130,9 +39,7 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
     noWifiSleep = request->hasArg(F("WS"));
 
     #ifndef WLED_DISABLE_ESPNOW
-    bool oldESPNow = enableESPNow;
     enableESPNow = request->hasArg(F("RE"));
-    if (oldESPNow != enableESPNow) forceReconnect = true;
     linked_remotes.clear();  // clear old remotes
     for (size_t n = 0; n < 10; n++) {
       char rm[4];
@@ -647,7 +554,8 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
           strlcpy(settingsPIN, pin, 5);
         }
         settingsPIN[4] = 0;
-        showWelcomePage = !(apBehavior == AP_BEHAVIOR_ALWAYS && strlen(settingsPIN) > 0);
+        // See the matching note in the SUBPAGE_WIFI handler above.
+        showWelcomePage = !(webbase.online() && strlen(settingsPIN) > 0);
       }
     }
 

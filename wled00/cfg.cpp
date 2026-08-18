@@ -82,54 +82,12 @@ bool deserializeConfig(JsonObject doc, bool fromFS) {
   }
 #endif
 
-  size_t n = 0;
-  JsonArray nw_ins = nw["ins"];
-  if (!nw_ins.isNull()) {
-    // as password are stored separately in wsec.json when reading configuration vector resize happens there, but for dynamic config we need to resize if necessary
-    if (nw_ins.size() > 1 && nw_ins.size() > multiWiFi.size()) multiWiFi.resize(nw_ins.size()); // resize constructs objects while resizing
-    for (JsonObject wifi : nw_ins) {
-      JsonArray ip = wifi["ip"];
-      JsonArray gw = wifi["gw"];
-      JsonArray sn = wifi["sn"];
-      char ssid[33] = "";
-      char pass[65] = "";
-      char bssid[13] = "";
-      IPAddress nIP = (uint32_t)0U, nGW = (uint32_t)0U, nSN = (uint32_t)0x00FFFFFF; // little endian
-      getStringFromJson(ssid, wifi[F("ssid")], 33);
-      getStringFromJson(pass, wifi["psk"], 65); // password is not normally present but if it is, use it
-      getStringFromJson(bssid, wifi[F("bssid")], 13);
-      for (size_t i = 0; i < 4; i++) {
-        CJSON(nIP[i], ip[i]);
-        CJSON(nGW[i], gw[i]);
-        CJSON(nSN[i], sn[i]);
-      }
-      if (strlen(ssid) > 0) strlcpy(multiWiFi[n].clientSSID, ssid, 33); // this will keep old SSID intact if not present in JSON
-      if (strlen(pass) > 0) strlcpy(multiWiFi[n].clientPass, pass, 65); // this will keep old password intact if not present in JSON
-      if (strlen(bssid) > 0) fillStr2MAC(multiWiFi[n].bssid, bssid);
-      multiWiFi[n].staticIP = nIP;
-      multiWiFi[n].staticGW = nGW;
-      multiWiFi[n].staticSN = nSN;
-#ifdef WLED_ENABLE_WPA_ENTERPRISE
-      byte encType = WIFI_ENCRYPTION_TYPE_PSK;
-      char anonIdent[65] = "";
-      char ident[65] = "";
-      CJSON(encType, wifi[F("enc_type")]);
-      getStringFromJson(anonIdent, wifi["e_anon_ident"], 65);
-      getStringFromJson(ident, wifi["e_ident"], 65);
-      multiWiFi[n].encryptionType = encType;
-      strlcpy(multiWiFi[n].enterpriseAnonIdentity, anonIdent, 65);
-      strlcpy(multiWiFi[n].enterpriseIdentity, ident, 65);
-#endif
-      if (++n >= WLED_MAX_WIFI_COUNT) break;
-    }
-  }
-
-  JsonArray dns = nw[F("dns")];
-  if (!dns.isNull()) {
-    for (size_t i = 0; i < 4; i++) {
-      CJSON(dnsAddress[i], dns[i]);
-    }
-  }
+  // NOTE: WiFi credentials (multiWiFi SSID/pass/BSSID/static-IP) and AP
+  // behavior/credentials (apSSID/apPass/apChannel/apHide/apBehavior) are no
+  // longer WLED's to load/save -- WebBase owns them entirely now (see
+  // lib/WebBase's own NVS-backed storage). Static DNS (dnsAddress) went with
+  // them, since its only consumer was the WiFi.config()/ETH.config() static-IP
+  // path, both removed.
 
   // https://github.com/wled/WLED/issues/5247
 #ifdef WLED_USE_ETHERNET
@@ -138,22 +96,6 @@ bool deserializeConfig(JsonObject doc, bool fromFS) {
   // NOTE: Ethernet configuration takes priority over other use of pins
   initEthernet();
 #endif
-
-  JsonObject ap = doc["ap"];
-  getStringFromJson(apSSID, ap[F("ssid")], 33);
-  getStringFromJson(apPass, ap["psk"] , 65); //normally not present due to security
-  //int ap_pskl = ap[F("pskl")];
-  CJSON(apChannel, ap[F("chan")]);
-  if (apChannel > 13 || apChannel < 1) apChannel = 6; // reset to default if invalid
-  CJSON(apHide, ap[F("hide")]);
-  if (apHide > 1) apHide = 1;
-  CJSON(apBehavior, ap[F("behav")]);
-  /*
-  JsonArray ap_ip = ap["ip"];
-  for (unsigned i = 0; i < 4; i++) {
-    apIP[i] = ap_ip;
-  }
-  */
 
   JsonObject wifi = doc[F("wifi")];
   noWifiSleep = !(wifi[F("sleep")] | !noWifiSleep); // inverted
@@ -863,48 +805,9 @@ void serializeConfig(JsonObject root) {
   }
 #endif
 
-  JsonArray nw_ins = nw.createNestedArray("ins");
-  for (size_t n = 0; n < multiWiFi.size(); n++) {
-    JsonObject wifi = nw_ins.createNestedObject();
-    wifi[F("ssid")] = multiWiFi[n].clientSSID;
-    wifi[F("pskl")] = strlen(multiWiFi[n].clientPass);
-    char bssid[13];
-    fillMAC2Str(bssid, multiWiFi[n].bssid);
-    wifi[F("bssid")] = bssid;
-    JsonArray wifi_ip = wifi.createNestedArray("ip");
-    JsonArray wifi_gw = wifi.createNestedArray("gw");
-    JsonArray wifi_sn = wifi.createNestedArray("sn");
-    for (size_t i = 0; i < 4; i++) {
-      wifi_ip.add(multiWiFi[n].staticIP[i]);
-      wifi_gw.add(multiWiFi[n].staticGW[i]);
-      wifi_sn.add(multiWiFi[n].staticSN[i]);
-    }
-#ifdef WLED_ENABLE_WPA_ENTERPRISE
-    wifi[F("enc_type")] = multiWiFi[n].encryptionType;
-    if (multiWiFi[n].encryptionType == WIFI_ENCRYPTION_TYPE_ENTERPRISE) {
-      wifi[F("e_anon_ident")] = multiWiFi[n].enterpriseAnonIdentity;
-      wifi[F("e_ident")] = multiWiFi[n].enterpriseIdentity;
-    }
-#endif
-  }
-
-  JsonArray dns = nw.createNestedArray(F("dns"));
-  for (size_t i = 0; i < 4; i++) {
-    dns.add(dnsAddress[i]);
-  }
-
-  JsonObject ap = root.createNestedObject("ap");
-  ap[F("ssid")] = apSSID;
-  ap[F("pskl")] = strlen(apPass);
-  ap[F("chan")] = apChannel;
-  ap[F("hide")] = apHide;
-  ap[F("behav")] = apBehavior;
-
-  JsonArray ap_ip = ap.createNestedArray("ip");
-  ap_ip.add(4);
-  ap_ip.add(3);
-  ap_ip.add(2);
-  ap_ip.add(1);
+  // NOTE: WiFi network list, static DNS, and AP credentials/behavior are no
+  // longer serialized here -- see the matching NOTE in deserializeConfig();
+  // WebBase owns all of that now.
 
   JsonObject wifi = root.createNestedObject(F("wifi"));
   wifi[F("sleep")] = !noWifiSleep;
@@ -1282,20 +1185,9 @@ bool deserializeConfigSec() {
 
   JsonObject root = pDoc->as<JsonObject>();
 
-  size_t n = 0;
-  JsonArray nw_ins = root["nw"]["ins"];
-  if (!nw_ins.isNull()) {
-    if (nw_ins.size() > 1 && nw_ins.size() > multiWiFi.size()) multiWiFi.resize(nw_ins.size()); // resize constructs objects while resizing
-    for (JsonObject wifi : nw_ins) {
-      char pw[65] = "";
-      getStringFromJson(pw, wifi["psk"], 65);
-      strlcpy(multiWiFi[n].clientPass, pw, 65);
-      if (++n >= WLED_MAX_WIFI_COUNT) break;
-    }
-  }
-
-  JsonObject ap = root["ap"];
-  getStringFromJson(apPass, ap["psk"] , 65);
+  // NOTE: WiFi network passwords and AP password used to live here -- both
+  // gone now that WebBase owns WiFi/AP credentials entirely (see the matching
+  // NOTE in deserializeConfig()).
 
   [[maybe_unused]] JsonObject interfaces = root["if"];
 
@@ -1329,17 +1221,6 @@ void serializeConfigSec() {
   if (!requestJSONBufferLock(JSON_LOCK_CFG_SEC_SER)) return;
 
   JsonObject root = pDoc->to<JsonObject>();
-
-  JsonObject nw = root.createNestedObject("nw");
-
-  JsonArray nw_ins = nw.createNestedArray("ins");
-  for (size_t i = 0; i < multiWiFi.size(); i++) {
-    JsonObject wifi = nw_ins.createNestedObject();
-    wifi[F("psk")] = multiWiFi[i].clientPass;
-  }
-
-  JsonObject ap = root.createNestedObject("ap");
-  ap["psk"] = apPass;
 
   [[maybe_unused]] JsonObject interfaces = root.createNestedObject("if");
 #ifndef WLED_DISABLE_MQTT

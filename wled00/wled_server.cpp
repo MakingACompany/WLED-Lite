@@ -1,8 +1,5 @@
 #include "wled.h"
 
-#ifndef WLED_DISABLE_OTA
-  #include "ota_update.h"  
-#endif
 #include "html_ui.h"
 #include "html_settings.h"
 #include "html_other.h"
@@ -30,7 +27,6 @@ static const char s_content_enc[] PROGMEM = "Content-Encoding";
 static const char s_unlock_ota [] PROGMEM = "Please unlock OTA in security settings!";
 static const char s_unlock_cfg [] PROGMEM = "Please unlock settings using PIN code!";
 static const char s_rebooting  [] PROGMEM = "Rebooting now...";
-static const char s_notimplemented[] PROGMEM = "Not implemented";
 static const char s_accessdenied[]   PROGMEM = "Access Denied";
 static const char s_not_found[]      PROGMEM = "Not found";
 static const char s_wsec[]           PROGMEM = "wsec.json";
@@ -64,10 +60,12 @@ static bool inSameSubnet(const IPAddress &client) {
 }
 
 static bool inLocalSubnet(const IPAddress &client) {
+  // NOTE: WLED no longer runs its own AP with a fixed 4.3.2.x subnet -- WebBase
+  // owns AP mode now and uses the ESP32 default softAP subnet (192.168.4.x),
+  // which is already covered by the 192.168.0.0/16 check below.
   return  inSubnet(client, IPAddress(10,0,0,0),    IPAddress(255,0,0,0))                  // 10.x.x.x
       ||  inSubnet(client, IPAddress(192,168,0,0), IPAddress(255,255,0,0))                // 192.168.x.x
       ||  inSubnet(client, IPAddress(172,16,0,0),  IPAddress(255,240,0,0))                // 172.16.x.x
-      || (inSubnet(client, IPAddress(4,3,2,0),     IPAddress(255,255,255,0)) && apActive) // WLED AP
       ||  inSameSubnet(client);                                                           // same subnet as WLED device
 }
 
@@ -322,14 +320,16 @@ static void createEditHandler() {
 
 static bool captivePortal(AsyncWebServerRequest *request)
 {
-  if (!apActive) return false; //only serve captive in AP mode
+  if (!webbase.apActive()) return false; //only serve captive in AP mode
   if (!request->hasHeader(F("Host"))) return false;
 
   String hostH = request->getHeader(F("Host"))->value();
   if (!isIp(hostH) && hostH.indexOf(F("wled.me")) < 0 && hostH.indexOf(cmDNS) < 0 && hostH.indexOf(':') < 0) {
     DEBUG_PRINTLN(F("Captive portal"));
     AsyncWebServerResponse *response = request->beginResponse(302);
-    response->addHeader(F("Location"), F("http://4.3.2.1"));
+    // WebBase's AP uses the default ESP32 softAP gateway (192.168.4.1), not
+    // WLED's old hardcoded 4.3.2.1 -- ask WiFi for the real address.
+    response->addHeader(F("Location"), "http://" + WiFi.softAPIP().toString());
     request->send(response);
     return true;
   }
@@ -515,115 +515,12 @@ void initServer()
 
   createEditHandler(); // initialize "/edit" handler, access is protected by "correctPIN"
 
-  static const char _update[] PROGMEM = "/update";
-#ifndef WLED_DISABLE_OTA
-  //init ota page
-  server.on(_update, HTTP_GET, [](AsyncWebServerRequest *request){
-    if (otaLock) {
-      serveMessage(request, 401, FPSTR(s_accessdenied), FPSTR(s_unlock_ota), 254);
-    } else
-      serveSettings(request); // checks for "upd" in URL and handles PIN
-  });
-
-  server.on(_update, HTTP_POST, [](AsyncWebServerRequest *request){
-    if (request->_tempObject) {
-      auto ota_result = getOTAResult(request);
-      if (ota_result.first == OTAResultStatus::TryAgain) {
-        request->deferResponse();
-      } else if (ota_result.first == OTAResultStatus::Ready) {
-        if (ota_result.second.length() > 0) {
-          serveMessage(request, 500, F("Update failed!"), ota_result.second, 254);
-        } else {
-          serveMessage(request, 200, F("Update successful!"), FPSTR(s_rebooting), 131);
-        }
-      }
-    } else {
-      // No context structure - something's gone horribly wrong
-      serveMessage(request, 500, F("Update failed!"), F("Internal server fault"), 254);
-    }
-  },[](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool isFinal){
-    if (index == 0) { 
-      // Allocate the context structure
-      if (!initOTA(request)) {
-        return; // Error will be dealt with after upload in response handler, above
-      }
-
-      // Privilege checks
-      IPAddress client  = request->client()->remoteIP();
-      if (((otaSameSubnet && !inSameSubnet(client)) && !strlen(settingsPIN)) || (!otaSameSubnet && !inLocalSubnet(client))) {        
-        DEBUG_PRINTLN(F("Attempted OTA update from different/non-local subnet!"));
-        serveMessage(request, 401, FPSTR(s_accessdenied), F("Client is not on local subnet."), 254);
-        setOTAReplied(request);
-        return;
-      }
-      if (!correctPIN) {
-        serveMessage(request, 401, FPSTR(s_accessdenied), FPSTR(s_unlock_cfg), 254);
-        setOTAReplied(request);
-        return;
-      };
-      if (otaLock) {
-        serveMessage(request, 401, FPSTR(s_accessdenied), FPSTR(s_unlock_ota), 254);
-        setOTAReplied(request);
-        return;
-      }      
-    }
-
-    handleOTAData(request, index, data, len, isFinal);
-  });
-#else
-  const auto notSupported = [](AsyncWebServerRequest *request){
-    serveMessage(request, 501, FPSTR(s_notimplemented), F("This build does not support OTA update."), 254);
-  };
-  server.on(_update, HTTP_GET, notSupported);
-  server.on(_update, HTTP_POST, notSupported, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool isFinal){});
-#endif
-
-#if defined(ARDUINO_ARCH_ESP32) && !defined(WLED_DISABLE_OTA)
-  // ESP32 bootloader update endpoint
-  server.on(F("/updatebootloader"), HTTP_POST, [](AsyncWebServerRequest *request){
-    if (request->_tempObject) {
-      auto bootloader_result = getBootloaderOTAResult(request);
-      if (bootloader_result.first) {
-        if (bootloader_result.second.length() > 0) {
-          serveMessage(request, 500, F("Bootloader update failed!"), bootloader_result.second, 254);
-        } else {
-          serveMessage(request, 200, F("Bootloader updated successfully!"), FPSTR(s_rebooting), 131);
-        }
-      }
-    } else {
-      // No context structure - something's gone horribly wrong
-      serveMessage(request, 500, F("Bootloader update failed!"), F("Internal server fault"), 254);
-    }
-  },[](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool isFinal){
-    if (index == 0) {
-      // Privilege checks
-      IPAddress client = request->client()->remoteIP();
-      if (((otaSameSubnet && !inSameSubnet(client)) && !strlen(settingsPIN)) || (!otaSameSubnet && !inLocalSubnet(client))) {
-        DEBUG_PRINTLN(F("Attempted bootloader update from different/non-local subnet!"));
-        serveMessage(request, 401, FPSTR(s_accessdenied), F("Client is not on local subnet."), 254);
-        setBootloaderOTAReplied(request);
-        return;
-      }
-      if (!correctPIN) {
-        serveMessage(request, 401, FPSTR(s_accessdenied), FPSTR(s_unlock_cfg), 254);
-        setBootloaderOTAReplied(request);
-        return;
-      }
-      if (otaLock) {
-        serveMessage(request, 401, FPSTR(s_accessdenied), FPSTR(s_unlock_ota), 254);
-        setBootloaderOTAReplied(request);
-        return;
-      }
-
-      // Allocate the context structure
-      if (!initBootloaderOTA(request)) {
-        return; // Error will be dealt with after upload in response handler, above
-      }
-    }
-
-    handleBootloaderOTAData(request, index, data, len, isFinal);
-  });
-#endif
+  // OTA firmware upload lives at POST /ota now (webbase.attachOTA(), added
+  // below) -- WLED's own /update (gzip-upload) and /updatebootloader
+  // (bootloader OTA) are gone along with ota_update.cpp/.h. Accepted,
+  // deliberate capability loss: no gzip-upload, no bootloader-OTA.
+  webbase.attachOTA(server);
+  webbase.attachSettings(server);
 
 #ifdef WLED_ENABLE_DMX
   server.on(F("/dmxmap"), HTTP_GET, [](AsyncWebServerRequest *request){
@@ -634,9 +531,13 @@ void initServer()
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     if (captivePortal(request)) return;
     bool forceWelcome = showWelcomePage;
-    // WLED-Lite: Require BOTH an Admin PIN set AND Persistent AP Mode (apBehavior == AP_BEHAVIOR_ALWAYS)
-    // to bypass the setup wizard and serve the main LED control page directly.
-    forceWelcome = !(strlen(settingsPIN) > 0 && apBehavior == AP_BEHAVIOR_ALWAYS);
+    // WLED-Lite: Require BOTH an Admin PIN set AND the device actually being
+    // online (webbase.online()) to bypass the setup wizard and serve the main
+    // LED control page directly. Originally keyed off
+    // apBehavior==AP_BEHAVIOR_ALWAYS ("AP always on") -- WebBase now owns
+    // AP/STA state entirely, and "fully onboarded" is better expressed as
+    // "actually connected to WiFi" than "our AP happens to still be up".
+    forceWelcome = !(strlen(settingsPIN) > 0 && webbase.online());
     if (!forceWelcome || request->hasArg(F("sliders"))) {
       handleStaticContent(request, F("/index.htm"), 200, FPSTR(CONTENT_TYPE_HTML), PAGE_index, PAGE_index_length);
     } else {
@@ -780,7 +681,6 @@ void serveSettings(AsyncWebServerRequest* request, bool post) {
     else if (url.indexOf(F("pins")) > 0) subPage = SUBPAGE_PINS;
     else if (url.indexOf(F("lock")) > 0) subPage = SUBPAGE_LOCK;
   }
-  else if (url.indexOf("/update") >= 0) subPage = SUBPAGE_UPDATE; // update page, for PIN check
   //else if (url.indexOf("/edit")   >= 0) subPage = 10;
   else subPage = SUBPAGE_WELCOME;
 
@@ -801,7 +701,12 @@ void serveSettings(AsyncWebServerRequest* request, bool post) {
     return;
   }
 #endif
-  bool pinRequired = !correctPIN && strlen(settingsPIN) > 0 && (subPage > (WLED_WIFI_CONFIGURED ? SUBPAGE_MENU : SUBPAGE_WIFI) && subPage < SUBPAGE_LOCK);
+  // Originally gated on WLED_WIFI_CONFIGURED (isWiFiConfigured()) -- before
+  // WiFi was set up, the WiFi subpage itself was PIN-exempt so a first-run
+  // device could still be gotten online. WebBase now owns WiFi setup
+  // entirely, so the equivalent "not yet fully set up" signal is
+  // !webbase.online().
+  bool pinRequired = !correctPIN && strlen(settingsPIN) > 0 && (subPage > (webbase.online() ? SUBPAGE_MENU : SUBPAGE_WIFI) && subPage < SUBPAGE_LOCK);
   if (pinRequired) {
     originalSubPage = subPage;
     subPage = SUBPAGE_PINREQ; // require PIN
@@ -870,21 +775,8 @@ void serveSettings(AsyncWebServerRequest* request, bool post) {
     case SUBPAGE_DMX     :  content = PAGE_settings_dmx;  len = PAGE_settings_dmx_length;  break;
 #endif
     case SUBPAGE_UM      :  content = PAGE_settings_um;   len = PAGE_settings_um_length;   break;
-#ifndef WLED_DISABLE_OTA
-    case SUBPAGE_UPDATE  :  content = PAGE_update;        len = PAGE_update_length;
-      #ifdef ARDUINO_ARCH_ESP32
-      if (request->hasArg(F("revert")) && inLocalSubnet(request->client()->remoteIP()) && Update.canRollBack()) {
-        doReboot = Update.rollBack();
-        if (doReboot) {
-          serveMessage(request, 200, F("Reverted to previous version!"), FPSTR(s_rebooting), 133);
-        } else {
-          serveMessage(request, 500, F("Rollback failed!"), F("Please reboot and retry."), 254);
-        }
-        return;
-      }
-      #endif
-      break;
-#endif
+    // SUBPAGE_UPDATE removed along with ota_update.cpp/.h and the /update
+    // route -- firmware upload is now POST /ota (webbase.attachOTA()).
 #ifndef WLED_DISABLE_2D
     case SUBPAGE_2D      :  content = PAGE_settings_2D;   len = PAGE_settings_2D_length;   break;
 #endif

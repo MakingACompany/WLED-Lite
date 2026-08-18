@@ -190,38 +190,14 @@ using PSRAMDynamicJsonDocument = BasicJsonDocument<PSRAM_Allocator>;
 #include "const.h"
 #include "colors.h"
 #include "fcn_declare.h"
-#ifndef WLED_DISABLE_OTA
-  #include "ota_update.h"
-#endif
 #include "NodeStruct.h"
 #include "pin_manager.h"
 #include "bus_manager.h"
 #include "FX.h"
-#include "wled_metadata.h"
-
-#ifndef CLIENT_SSID
-  #define CLIENT_SSID DEFAULT_CLIENT_SSID
-#endif
-
-#ifndef CLIENT_PASS
-  #define CLIENT_PASS ""
-#endif
+#include <WebBase.h>
 
 #ifndef MDNS_NAME
   #define MDNS_NAME DEFAULT_MDNS_NAME
-#endif
-
-#if defined(WLED_AP_PASS) && !defined(WLED_AP_SSID)
-  #error WLED_AP_PASS is defined but WLED_AP_SSID is still the default. \
-         Please change WLED_AP_SSID to something unique.
-#endif
-
-#ifndef WLED_AP_SSID
-  #define WLED_AP_SSID DEFAULT_AP_SSID
-#endif
-
-#ifndef WLED_AP_PASS
-  #define WLED_AP_PASS DEFAULT_AP_PASS
 #endif
 
 #ifndef WLED_PIN
@@ -276,8 +252,7 @@ using PSRAMDynamicJsonDocument = BasicJsonDocument<PSRAM_Allocator>;
 
 #define WLED_CODENAME "Niji"
 
-// AP and OTA default passwords (for maximum security change them!)
-WLED_GLOBAL char apPass[65]  _INIT(WLED_AP_PASS);
+// OTA default password (for maximum security change it!)
 #ifdef WLED_OTA_PASS
 WLED_GLOBAL char otaPass[33] _INIT(WLED_OTA_PASS);
 #else
@@ -331,47 +306,32 @@ WLED_GLOBAL char ntpServerName[33] _INIT(WLED_LITE_NTP_SERVER);    // WLED-Lite:
 WLED_GLOBAL char ntpServerName[33] _INIT("0.wled.pool.ntp.org");   // NTP server to use
 #endif
 
-// WiFi CONFIG (all these can be changed via web UI, no need to set them here)
-WLED_GLOBAL std::vector<WiFiConfig> multiWiFi;
-WLED_GLOBAL IPAddress dnsAddress _INIT_N(((  8,   8,  8,  8)));   // Google's DNS
+// Network CONFIG (all these can be changed via web UI, no need to set them here)
+// NOTE: WiFi credentials/AP-behavior are no longer owned by WLED -- see WebBase
+// (webbase.online() / webbase.apActive()) in lib/WebBase. What remains here are
+// non-credential radio-tuning knobs (noWifiSleep/force802_3g/txPower) and WLED's
+// own mDNS/service naming (cmDNS), all independent of who established the link.
 WLED_GLOBAL char cmDNS[33]       _INIT(MDNS_NAME);                // mDNS address (*.local, replaced by wledXXXXXX if default is used)
-WLED_GLOBAL char apSSID[33]      _INIT("");                       // AP off by default (unless setup)
 #ifdef WLED_SAVE_RAM
 typedef class WiFiOptions {
   public:
     struct {
-      uint8_t selectedWiFi : 4; // max 16 SSIDs
-      uint8_t apChannel    : 4;
-      uint8_t apHide       : 3;
-      uint8_t apBehavior   : 3;
       bool    noWifiSleep  : 1;
       bool    force802_3g  : 1;
     };
-    WiFiOptions(uint8_t s, uint8_t c, bool h, uint8_t b, bool sl, bool g) {
-      selectedWiFi = s;
-      apChannel = c;
-      apHide = h;
-      apBehavior = b;
+    WiFiOptions(bool sl, bool g) {
       noWifiSleep = sl;
       force802_3g = g;
     }
 } __attribute__ ((aligned(1), packed)) wifi_options_t;
   #ifdef ARDUINO_ARCH_ESP32
-WLED_GLOBAL wifi_options_t wifiOpt _INIT_N(({0, 1, false, AP_BEHAVIOR_BOOT_NO_CONN, true, false}));
+WLED_GLOBAL wifi_options_t wifiOpt _INIT_N(({true, false}));
   #else
-WLED_GLOBAL wifi_options_t wifiOpt _INIT_N(({0, 1, false, AP_BEHAVIOR_BOOT_NO_CONN, false, false}));
+WLED_GLOBAL wifi_options_t wifiOpt _INIT_N(({false, false}));
   #endif
-#define selectedWiFi wifiOpt.selectedWiFi
-#define apChannel    wifiOpt.apChannel
-#define apHide       wifiOpt.apHide
-#define apBehavior   wifiOpt.apBehavior
 #define noWifiSleep  wifiOpt.noWifiSleep
 #define force802_3g  wifiOpt.force802_3g
 #else
-WLED_GLOBAL int8_t selectedWiFi  _INIT(0);
-WLED_GLOBAL byte apChannel       _INIT(6);                        // 2.4GHz WiFi AP channel (1-13)
-WLED_GLOBAL byte apHide          _INIT(0);                        // hidden AP SSID
-WLED_GLOBAL byte apBehavior      _INIT(AP_BEHAVIOR_BOOT_NO_CONN); // access point opens when no connection after boot
   #ifdef ARDUINO_ARCH_ESP32
 WLED_GLOBAL bool noWifiSleep _INIT(true);                         // disabling modem sleep modes will increase heat output and power usage, but may help with connection issues
   #else
@@ -386,7 +346,6 @@ WLED_GLOBAL uint8_t txPower _INIT(WIFI_POWER_8_5dBm);
 WLED_GLOBAL uint8_t txPower _INIT(WIFI_POWER_19_5dBm);
   #endif
 #endif
-#define WLED_WIFI_CONFIGURED isWiFiConfigured()
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(WLED_USE_ETHERNET)
   #ifdef WLED_ETH_DEFAULT                                          // default ethernet board type if specified
@@ -593,13 +552,9 @@ WLED_GLOBAL unsigned long lastEditTime _INIT(0);
 WLED_GLOBAL uint16_t userVar0 _INIT(0), userVar1 _INIT(0); //available for use in usermod
 
 // internal global variable declarations
-// wifi
-WLED_GLOBAL bool apActive _INIT(false);
-WLED_GLOBAL byte apClients _INIT(0);
-WLED_GLOBAL bool forceReconnect _INIT(false);
-WLED_GLOBAL unsigned long lastReconnectAttempt _INIT(0);
-WLED_GLOBAL bool interfacesInited _INIT(false);
-WLED_GLOBAL bool wasConnected _INIT(false);
+// wifi/AP state, connection retry bookkeeping, and AP-client counting are now
+// entirely WebBase's responsibility (webbase.online()/webbase.apActive()) --
+// see lib/WebBase. Nothing here duplicates that state anymore.
 
 // color
 WLED_GLOBAL byte lastRandomIndex _INIT(0);        // used to save last random color so the new one is not the same
@@ -831,10 +786,6 @@ WLED_GLOBAL byte lastTimerMinute  _INIT(0);
 WLED_GLOBAL std::vector<Timer> timers;
 WLED_GLOBAL bool doAdvancePlaylist _INIT(false);
 
-//improv
-WLED_GLOBAL byte improvActive _INIT(0); //0: no improv packet received, 1: improv active, 2: provisioning
-WLED_GLOBAL byte improvError _INIT(0);
-
 //playlists
 WLED_GLOBAL int16_t currentPlaylist _INIT(-1);
 //still used for "PL=~" HTTP API command
@@ -1038,22 +989,6 @@ WLED_GLOBAL volatile uint8_t jsonBufferLock _INIT(0);
 
 #define WLED_CONNECTED (Network.isConnected())
 
-#ifndef WLED_AP_SSID_UNIQUE
-  #define WLED_SET_AP_SSID() do { \
-    strcpy_P(apSSID, PSTR(WLED_AP_SSID)); \
-  } while(0)
-#else
-  #define WLED_SET_AP_SSID() do { \
-    snprintf_P(\
-      apSSID, \
-      sizeof(apSSID)-1, \
-      PSTR("%s-%s"), \
-      WLED_BRAND, \
-      escapedMac.c_str()+6 \
-    ); \
-  } while(0)
-#endif
-
 //macro to convert F to const
 #define SET_F(x)  (const char*)F(x)
 
@@ -1073,10 +1008,12 @@ public:
   void reset();
 
   void beginStrip();
-  void handleConnection();
-  void initAP(bool resetAP = false);
-  void initConnection();
-  void initInterfaces();
+  // Brings up the non-WiFi-credential network services (UDP notifier/RGB
+  // sockets, mDNS, E1.31/DDP listeners, server.begin(), and -- only while
+  // WebBase is in AP mode -- the captive-portal DNS server). Called exactly
+  // once from setup(), after webbase.begin() has resolved online/AP state;
+  // does not need to re-run on reconnect (WebBase owns that now).
+  void initNetworkServices();
   #if defined(STATUSLED)
   void handleStatusLED();
   #endif

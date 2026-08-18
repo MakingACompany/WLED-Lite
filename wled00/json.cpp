@@ -541,18 +541,12 @@ bool deserializeState(JsonObject root, byte callMode, byte presetId)
 
   doAdvancePlaylist = root[F("np")] | doAdvancePlaylist; //advances to next preset in playlist when true
 
-  JsonObject wifi = root[F("wifi")];
-  if (!wifi.isNull()) {
-    bool apMode = getBoolVal(wifi[F("ap")], apActive);
-    if (!apActive && apMode) WLED::instance().initAP();  // start AP mode immediately
-    else if (apActive && !apMode) { // stop AP mode immediately
-      dnsServer.stop();
-      WiFi.softAPdisconnect(true);
-      apActive = false;
-    }
-    //bool restart = wifi[F("restart")] | false;
-    //if (restart) forceReconnect = true;
-  }
+  // NOTE: the old "wifi":{"ap":true/false} JSON toggle for live-forcing
+  // WLED's own AP on/off is gone -- WLED no longer owns AP hardware
+  // bring-up/teardown (WebBase decides AP-vs-STA once, in webbase.begin(),
+  // with no live re-toggle API). Returning to a setup AP now means holding
+  // BOOT to enter FlashLight Core, or power-cycling with no saved network
+  // reachable so WebBase falls back to AP on its own.
 
   if (stateChanged) stateUpdated(callMode);
   if (presetToRestore) currentPreset = presetToRestore;
@@ -804,7 +798,7 @@ void serializeInfo(JsonObject root)
   wifi_info[F("rssi")] = qrssi;
   wifi_info[F("signal")] = getSignalQuality(qrssi);
   wifi_info[F("channel")] = WiFi.channel();
-  wifi_info[F("ap")] = apActive;
+  wifi_info[F("ap")] = webbase.apActive();
 
   JsonObject fs_info = root.createNestedObject("fs");
   fs_info["u"] = fsBytesUsed / 1000;
@@ -832,9 +826,8 @@ void serializeInfo(JsonObject root)
   root[F("resetReason1")] = (int)rtc_get_reset_reason(1);
   #endif
   root[F("lwip")] = 0; //deprecated
-  #ifndef WLED_DISABLE_OTA
-  root[F("bootloaderSHA256")] = getBootloaderSHA256Hex();
-  #endif
+  // bootloaderSHA256 removed along with ota_update.cpp/.h -- that was a
+  // bootloader-OTA-specific integrity check, not used by WebBase's /ota.
 #else
   root[F("arch")] = "esp8266";
   root[F("core")] = ESP.getCoreVersion();

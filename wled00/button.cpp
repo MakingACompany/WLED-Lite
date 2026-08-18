@@ -8,8 +8,6 @@
 #define WLED_LONG_PRESS             600 // long press if button is released after held for at least 600ms
 #define WLED_DOUBLE_PRESS           350 // double press if another press within 350ms after a short press
 #define WLED_LONG_REPEATED_ACTION   400 // how often a repeated action (e.g. dimming) is fired on long press on button IDs >0
-#define WLED_LONG_AP               5000 // how long button 0 needs to be held to activate WLED-AP
-#define WLED_LONG_FACTORY_RESET   10000 // how long button 0 needs to be held to trigger a factory reset
 #define WLED_LONG_BRI_STEPS          16 // how much to increase/decrease the brightness with each long press repetition
 
 static const char _mqtt_topic_button[] PROGMEM = "%s/button/%d";  // optimize flash usage
@@ -367,9 +365,14 @@ void handleButton()
       bool doublePress = buttons[b].waitTime; //did we have a short press before?
       buttons[b].waitTime = 0;
 
-      if (b == 0 && dur > WLED_LONG_AP) { // long press on button 0 (when released)
-        // Disabled automatic flash formatting / AP reset on long press to prevent capacitive touch false positives
-      } else if (!buttons[b].longPressed) { //short press
+      // NOTE: WLED_LONG_AP/WLED_LONG_FACTORY_RESET (5s/10s long-press-on-
+      // button-0 handling) were removed earlier this session -- the capacitive
+      // touch "stuck pressed" flash-wipe bug fix already stripped that
+      // handler's body down to a no-op, and by the time dur would have
+      // exceeded either threshold, longPressed below is already true (it's
+      // set once dur > WLED_LONG_PRESS = 600ms), so the branch never changed
+      // behavior. Removed the dead defines and this now-redundant guard.
+      if (!buttons[b].longPressed) { //short press
         //NOTE: this interferes with double click handling in usermods so usermod needs to implement full button handling
         if (b != 1 && !buttons[b].macroDoublePress) { //don't wait for double press on buttons without a default action if no double press macro set
           shortPressAction(b);

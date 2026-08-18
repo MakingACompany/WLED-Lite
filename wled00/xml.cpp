@@ -220,55 +220,12 @@ void getSettingsJS(byte subPage, Print& settingsScript)
 
   if (subPage == SUBPAGE_WIFI)
   {
-    size_t l;
-    settingsScript.printf_P(PSTR("resetWiFi(%d);"), WLED_MAX_WIFI_COUNT);
-    for (size_t n = 0; n < multiWiFi.size(); n++) {
-      l = strlen(multiWiFi[n].clientPass);
-      char fpass[l+1]; //fill password field with ***
-      fpass[l] = 0;
-      memset(fpass,'*',l);
-      char bssid[13];
-      fillMAC2Str(bssid, multiWiFi[n].bssid);
-#ifdef WLED_ENABLE_WPA_ENTERPRISE
-      settingsScript.printf_P(PSTR("addWiFi(\"%s\",\"%s\",\"%s\",0x%X,0x%X,0x%X,\"%u\",\"%s\",\"%s\");"),
-        multiWiFi[n].clientSSID,
-        fpass,
-        bssid,
-        (uint32_t) multiWiFi[n].staticIP, // explicit cast required as this is a struct
-        (uint32_t) multiWiFi[n].staticGW,
-        (uint32_t) multiWiFi[n].staticSN,
-        multiWiFi[n].encryptionType,
-        multiWiFi[n].enterpriseAnonIdentity,
-        multiWiFi[n].enterpriseIdentity);
-#else
-      settingsScript.printf_P(PSTR("addWiFi(\"%s\",\"%s\",\"%s\",0x%X,0x%X,0x%X);"),
-        multiWiFi[n].clientSSID,
-        fpass,
-        bssid,
-        (uint32_t) multiWiFi[n].staticIP, // explicit cast required as this is a struct
-        (uint32_t) multiWiFi[n].staticGW,
-        (uint32_t) multiWiFi[n].staticSN);
-#endif
-    }
-
-    printSetFormValue(settingsScript,PSTR("D0"),dnsAddress[0]);
-    printSetFormValue(settingsScript,PSTR("D1"),dnsAddress[1]);
-    printSetFormValue(settingsScript,PSTR("D2"),dnsAddress[2]);
-    printSetFormValue(settingsScript,PSTR("D3"),dnsAddress[3]);
-
+    // WiFi network list, static DNS, and AP SSID/password/channel/hide/behavior
+    // are no longer populated here -- WebBase owns all of that now (see
+    // /api/webbase/settings). "CM" (mDNS name) and the radio-tuning/ESP-NOW
+    // fields below are still WLED's own.
     printSetFormValue(settingsScript,PSTR("CM"),cmDNS);
-    printSetFormIndex(settingsScript,PSTR("AB"),apBehavior);
-    printSetFormCheckbox(settingsScript,PSTR("AO"),apBehavior == AP_BEHAVIOR_ALWAYS);
-    printSetFormValue(settingsScript,PSTR("AS"),apSSID);
-    printSetFormCheckbox(settingsScript,PSTR("AH"),apHide);
 
-    l = strlen(apPass);
-    char fapass[l+1]; //fill password field with ***
-    fapass[l] = 0;
-    memset(fapass,'*',l);
-    printSetFormValue(settingsScript,PSTR("AP"),fapass);
-
-    printSetFormValue(settingsScript,PSTR("AC"),apChannel);
     #ifdef ARDUINO_ARCH_ESP32
     printSetFormValue(settingsScript,PSTR("TX"),txPower);
     #else

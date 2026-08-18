@@ -221,8 +221,11 @@ void handleNetworkTime()
           case AsyncDNS::result::Error:
             DEBUG_PRINTLN(F("NTP DNS failed"));
             if (ntpDNSlookup->getErrorCount() > 6) {
-              // after 6 failed attempts (30min), reset network connection as dns is probably stuck (TODO: IDF bug, should be fixed in V5)
-              if (offMode) forceReconnect = true; // do not disturb while LEDs are running
+              // after 6 failed attempts (30min), give up on this lookup cycle;
+              // dns is probably stuck (TODO: IDF bug, should be fixed in V5).
+              // WLED no longer owns WiFi reconnection (see WebBase), so there's
+              // no forced-reconnect escape hatch here anymore -- the OS-level
+              // WiFi stack's own auto-reconnect is the fallback.
               ntpDNSlookup.reset();
             } else {
               // Retry

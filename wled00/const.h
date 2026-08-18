@@ -43,16 +43,8 @@ constexpr size_t  WLED_MAX_USERMOD_PALETTES     = WLED_USERMOD_PALETTE_ID_BASE -
 #endif
 
 //Defaults
-#define DEFAULT_CLIENT_SSID "Your_Network"
-#define DEFAULT_AP_SSID     WLED_BRAND "-AP"
-#define DEFAULT_AP_PASS     "wled1234"
 #define DEFAULT_OTA_PASS    "wledota"
 #define DEFAULT_MDNS_NAME   "x"
-
-//increase if you need more
-#ifndef WLED_MAX_WIFI_COUNT
-  #define WLED_MAX_WIFI_COUNT 3
-#endif
 
 #ifndef WLED_MAX_USERMODS
   #if defined(ESP8266) || defined(CONFIG_IDF_TARGET_ESP32S2)
@@ -235,16 +227,6 @@ static_assert(WLED_MAX_BUSSES <= 32, "WLED_MAX_BUSSES exceeds hard limit");
 #ifdef WLED_ENABLE_WPA_ENTERPRISE
   #define WIFI_ENCRYPTION_TYPE_PSK          0     //None/WPA/WPA2
   #define WIFI_ENCRYPTION_TYPE_ENTERPRISE   1     //WPA/WPA2-Enterprise
-#endif
-
-//Access point behavior
-#define AP_BEHAVIOR_BOOT_NO_CONN          0     //Open AP when no connection after boot
-#define AP_BEHAVIOR_NO_CONN               1     //Open when no connection (either after boot or if connection is lost)
-#define AP_BEHAVIOR_ALWAYS                2     //Always open
-#define AP_BEHAVIOR_BUTTON_ONLY           3     //Only when button pressed for 6 sec
-#define AP_BEHAVIOR_TEMPORARY             4     //Open AP when no connection after boot but only temporary
-#ifndef WLED_AP_TIMEOUT
-  #define WLED_AP_TIMEOUT            300000     //Temporary AP timeout
 #endif
 
 //Notifier callMode

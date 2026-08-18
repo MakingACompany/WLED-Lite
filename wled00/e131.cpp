@@ -513,11 +513,12 @@ static void prepareArtnetPollReply(ArtPollReply *reply) {
   reply->reply_bind_index = 1;
 
   // Product supports web browser configuration
-  // Node’s IP is DHCP or manually configured
+  // Node's IP is DHCP-assigned (static IP configuration is no longer
+  // supported -- WebBase always uses DHCP)
   // Node is DHCP capable
   // Node supports 15 bit Port-Address (Art-Net 3 or 4)
   // Node is able to switch between ArtNet and sACN
-  reply->reply_status_2 = (multiWiFi[0].staticIP[0] == 0) ? 0x1F : 0x1D;
+  reply->reply_status_2 = 0x1F;
 
   // RDM is disabled
   // Output style is continuous

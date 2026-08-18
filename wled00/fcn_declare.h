@@ -9,6 +9,13 @@
  * All globally accessible functions are declared here
  */
 
+//fw_identity.cpp -- build-identity display strings (see WLED_RELEASE_NAME/
+// WLED_VERSION build flags). The actual OTA-identity-validation struct lives
+// in WebBase's FwIdentity now; these are just informational.
+extern const char versionString[];
+extern const char releaseString[];
+extern const __FlashStringHelper* repoString;
+
 //alexa.cpp
 #ifndef WLED_DISABLE_ALEXA
 void onAlexaChange(EspalexaDevice* dev);
@@ -59,37 +66,6 @@ bool getJsonValue(const JsonVariant& element, DestType& destination, const Defau
 
   return true;
 }
-
-typedef struct WiFiConfig {
-  char clientSSID[33];
-  char clientPass[65];
-  uint8_t bssid[6];
-  IPAddress staticIP;
-  IPAddress staticGW;
-  IPAddress staticSN;
-#ifdef WLED_ENABLE_WPA_ENTERPRISE
-  byte encryptionType;
-  char enterpriseAnonIdentity[65];
-  char enterpriseIdentity[65];
-  WiFiConfig(const char *ssid="", const char *pass="", uint32_t ip=0, uint32_t gw=0, uint32_t subnet=0x00FFFFFF // little endian
-    , byte enc_type=WIFI_ENCRYPTION_TYPE_PSK, const char *ent_anon="", const char *ent_iden="")
-#else
-  WiFiConfig(const char *ssid="", const char *pass="", uint32_t ip=0, uint32_t gw=0, uint32_t subnet=0x00FFFFFF) // little endian
-#endif
-  : staticIP(ip)
-  , staticGW(gw)
-  , staticSN(subnet)
-  {
-    strncpy(clientSSID, ssid, 32); clientSSID[32] = 0;
-    strncpy(clientPass, pass, 64); clientPass[64] = 0;
-#ifdef WLED_ENABLE_WPA_ENTERPRISE
-    encryptionType = enc_type;
-    strncpy(enterpriseAnonIdentity, ent_anon, 64); enterpriseAnonIdentity[64] = 0;
-    strncpy(enterpriseIdentity, ent_iden, 64); enterpriseIdentity[64] = 0;
-#endif
-    memset(bssid, 0, sizeof(bssid));
-  }
-} wifi_config;
 
 //dmx_output.cpp
 void initDMXOutput();
@@ -144,22 +120,6 @@ int fileSizeCallback(void);
 byte renderImageToSegment(Segment &seg);
 void endImagePlayback(Segment* seg);
 #endif
-
-//improv.cpp
-enum ImprovRPCType {
-  Command_Wifi = 0x01,
-  Request_State = 0x02,
-  Request_Info = 0x03,
-  Request_Scan = 0x04
-};
-
-void handleImprovPacket();
-void sendImprovRPCResult(ImprovRPCType type, uint8_t n_strings = 0, const char **strings = nullptr);
-void sendImprovStateResponse(uint8_t state, bool error = false);
-void sendImprovInfoResponse();
-void startImprovWifiScan();
-void handleImprovWifiScan();
-void sendImprovIPRPCResult(ImprovRPCType type);
 
 //ir.cpp
 void initIR();
@@ -302,12 +262,7 @@ void espNowReceiveCB(uint8_t* address, uint8_t* data, uint8_t len, signed int rs
 //network.cpp
 bool initEthernet(); // result is informational
 int  getSignalQuality(int rssi);
-void fillMAC2Str(char *str, const uint8_t *mac);
-void fillStr2MAC(uint8_t *mac, const char *str);
-int  findWiFi(bool doScan = false);
-bool isWiFiConfigured();
 void installIPv6RABlocker();
-void WiFiEvent(WiFiEvent_t event);
 
 //um_manager.cpp
 typedef enum UM_Data_Types {

@@ -14,7 +14,6 @@
 			l.onerror = () => setTimeout(loadFiles, 100);
 			document.head.appendChild(l);
 		})();
-		function U() { window.open(getURL("/update"),"_self"); }
 		function checkNum(o) {
 			const specialkeys = ["Backspace", "Tab", "Enter", "Shift", "Control", "Alt", "Pause", "CapsLock", "Escape", "Space", "PageUp", "PageDown", "End", "Home", "ArrowLeft", "ArrowUp", "ArrowRight", "ArrowDown", "Insert", "Delete"];
 			// true if key is a number or a special key
@@ -62,7 +61,9 @@
 	</div>
 	<div class="sec" id="OTA">
 		<h3>Software Update</h3>
-		<button type="button" onclick="U()">Update WLED</button><br>
+		<i>Firmware updates are handled by the FlashLight management layer now,
+		not this page: <code>POST /ota</code> (multipart <code>firmware</code>
+		field), or hold BOOT at power-on to enter FlashLight recovery mode.</i><br><br>
 		<div id="aOTA">Enable ArduinoOTA: <input type="checkbox" name="AO"></div>
 		Only allow update from same network/WiFi: <input type="checkbox" name="SU"><br>
 		<i class="warn">&#9888; If you are using multiple VLANs (i.e. IoT or guest network) either set PIN or disable this option.<br>

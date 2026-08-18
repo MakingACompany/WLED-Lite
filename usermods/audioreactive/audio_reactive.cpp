@@ -1186,7 +1186,7 @@ class AudioReactive : public Usermod {
 
       if ((audioSyncPort <= 0) || ((audioSyncEnabled & 0x03) == 0)) return;  // Sound Sync not enabled
       if (udpSyncConnected) return;                                          // already connected
-      if (!(apActive || interfacesInited)) return;                           // neither AP nor other connections availeable
+      if (!(webbase.apActive() || webbase.online())) return;                  // neither AP nor other connections availeable
       if (millis() - last_connection_attempt < 15000) return;                // only try once in 15 seconds
       if (updateIsRunning) return; 
 
