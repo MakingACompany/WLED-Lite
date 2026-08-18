@@ -102,7 +102,12 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
 
     strlcpy(cmDNS, request->arg(F("CM")).c_str(), 33);
 
-    apBehavior = request->arg(F("AB")).toInt();
+    if (request->hasArg(F("AO"))) {
+      apBehavior = AP_BEHAVIOR_ALWAYS;
+    } else {
+      apBehavior = request->arg(F("AB")).toInt();
+    }
+    showWelcomePage = !(apBehavior == AP_BEHAVIOR_ALWAYS && strlen(settingsPIN) > 0);
     char oldSSID[33]; strcpy(oldSSID, apSSID);
     strlcpy(apSSID, request->arg(F("AS")).c_str(), 33);
     if (!strcmp(oldSSID, apSSID) && apActive) forceReconnect = true;
@@ -642,6 +647,7 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
           strlcpy(settingsPIN, pin, 5);
         }
         settingsPIN[4] = 0;
+        showWelcomePage = !(apBehavior == AP_BEHAVIOR_ALWAYS && strlen(settingsPIN) > 0);
       }
     }
 

@@ -474,6 +474,70 @@ main, .header, .footer {
 .schedule__status.is-ok { color: var(--accent-soft); }
 .schedule__status.is-error { color: #ff9b8a; }
 
+/* ---- Accordion collapsible sections ---- */
+details.accordion { width: 100%; margin: 0; }
+summary.accordion__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  margin-bottom: 0 !important;
+  user-select: none;
+}
+summary.accordion__summary::-webkit-details-marker { display: none; }
+.accordion__chevron {
+  transition: transform .25s ease;
+  color: var(--text-dim);
+}
+details[open] .accordion__chevron {
+  transform: rotate(180deg);
+  color: var(--accent);
+}
+
+/* ---- Preset Pill Badges ---- */
+.preset-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card-hi);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  color: var(--text-dim);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: background .18s, border-color .18s, color .18s;
+}
+.preset-pill:hover { color: var(--text); border-color: var(--line-strong); }
+.preset-pill.is-on {
+  background: linear-gradient(180deg, rgba(var(--glow), 0.18), rgba(var(--glow), 0.06));
+  border-color: rgba(var(--glow), 0.6);
+  color: var(--accent-soft);
+}
+.preset-pill.is-default {
+  border-color: rgba(var(--glow), 0.55);
+  box-shadow: 0 0 12px rgba(var(--glow), 0.18);
+}
+.preset-pill__del {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  color: var(--text-mute);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.preset-pill__del:hover {
+  background: rgba(255, 80, 80, 0.35);
+  color: #ff9999;
+}
+
 /* ---- Footer ---- */
 .footer {
   text-align: center;

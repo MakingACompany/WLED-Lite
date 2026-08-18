@@ -421,6 +421,7 @@
 
   // ---------- Power + Brightness ----------
   function wirePower() {
+    if (!powerBtn) return;
     powerBtn.addEventListener('click', () => {
       const wasOn = powerBtn.getAttribute('aria-pressed') === 'true';
       send({ on: !wasOn });
@@ -428,6 +429,7 @@
   }
 
   function wireBrightness() {
+    if (!briSlider) return;
     briSlider.addEventListener('input', () => {
       const v = +briSlider.value;
       briVal.textContent = Math.round(v / 2.55) + '%';
@@ -437,7 +439,7 @@
 
   // ---------- Color picker ----------
   function wirePicker() {
-    if (typeof iro === 'undefined') return;
+    if (typeof iro === 'undefined' || !$('picker')) return;
     cpick = new iro.ColorPicker('#picker', {
       width: 260,
       layoutDirection: 'horizontal',
@@ -453,15 +455,354 @@
     });
   }
 
+  // ---------- Effect Tuning (Speed & Intensity) ----------
+  const fxSpeed = $('fx-speed');
+  const fxSpeedVal = $('fx-speed-val');
+  const fxIntensity = $('fx-intensity');
+  const fxIntensityVal = $('fx-intensity-val');
+
+  const fxSpeedSend = debouncer(120);
+  const fxIntensitySend = debouncer(120);
+
+  function wireFxControls() {
+    if (fxSpeed) {
+      fxSpeed.addEventListener('input', () => {
+        const v = +fxSpeed.value;
+        fxSpeedVal.textContent = Math.round(v / 2.55) + '%';
+        fxSpeedSend({ seg: { sx: v } });
+      });
+    }
+    if (fxIntensity) {
+      fxIntensity.addEventListener('input', () => {
+        const v = +fxIntensity.value;
+        fxIntensityVal.textContent = Math.round(v / 2.55) + '%';
+        fxIntensitySend({ seg: { ix: v } });
+      });
+    }
+  }
+
+  // ---------- Palettes ----------
+  const palettesEl = $('palettes');
+  const CURATED_PALETTES = [
+    [0, 'Default'],
+    [2, 'Rainbow'],
+    [3, 'Sunset'],
+    [4, 'Sunset 2'],
+    [5, 'Beach'],
+    [6, 'Sunburst'],
+    [11, 'Breeze'],
+    [35, 'Ocean'],
+    [36, 'Forest'],
+    [49, 'Party'],
+    [52, 'Aurora'],
+    [54, 'Fire'],
+    [56, 'Sakura'],
+    [60, 'Neon']
+  ];
+
+  function renderPalettes() {
+    if (!palettesEl) return;
+    palettesEl.innerHTML = '';
+    CURATED_PALETTES.forEach(([id, name]) => {
+      const li = document.createElement('li');
+      li.className = 'effect';
+      li.dataset.id = String(id);
+      li.setAttribute('role', 'option');
+      li.tabIndex = 0;
+      li.textContent = name;
+      li.addEventListener('click', () => selectPalette(id));
+      palettesEl.appendChild(li);
+    });
+  }
+
+  function selectPalette(id) {
+    if (!palettesEl) return;
+    palettesEl.querySelectorAll('.effect').forEach((el) =>
+      el.classList.toggle('is-on', +el.dataset.id === id)
+    );
+    send({ seg: { pal: id } });
+  }
+
+  // ---------- Presets & Boot Preset ----------
+  const presetPills = $('preset-pills');
+  const presetNameIn = $('preset-name');
+  const presetSaveBtn = $('preset-save');
+  const presetUpdateBtn = $('preset-update');
+  let currentPresets = {};
+  let activePresetId = 0;
+
+  async function fetchPresets() {
+    try {
+      const r = await fetch('/presets.json');
+      if (r.ok) {
+        currentPresets = await r.json();
+        renderPresets();
+      }
+    } catch (_) {}
+  }
+
+  function renderPresets() {
+    if (!presetPills) return;
+    presetPills.innerHTML = '';
+
+    // Sort preset keys numerically (1, 2, 3...) so cycle order is crystal clear!
+    const validKeys = Object.keys(currentPresets)
+      .map(k => parseInt(k, 10))
+      .filter(k => !isNaN(k) && k > 0 && currentPresets[k] && typeof currentPresets[k] === 'object' && currentPresets[k].n)
+      .sort((a, b) => a - b);
+
+    if (validKeys.length === 0) {
+      presetPills.innerHTML = '<span style="font-size:13px; color:var(--text-mute);">No saved presets yet — device will start Off/Black</span>';
+      if (presetUpdateBtn) presetUpdateBtn.hidden = true;
+      return;
+    }
+
+    validKeys.forEach((id, index) => {
+      const p = currentPresets[id];
+      const name = p.n || ('Preset ' + id);
+
+      // Pill container
+      const isDefault = (index === 0);
+      const pill = document.createElement('div');
+      pill.className = 'preset-pill' + (id === activePresetId ? ' is-on' : '') + (isDefault ? ' is-default' : '');
+      if (isDefault) pill.title = 'Default startup preset';
+      pill.dataset.id = String(id);
+
+      // Move Up badge (if not first)
+      if (index > 0) {
+        const upBtn = document.createElement('span');
+        upBtn.className = 'preset-pill__del';
+        upBtn.textContent = '▲';
+        upBtn.title = 'Move up in cycle order';
+        upBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          swapPresets(validKeys[index - 1], id);
+        });
+        pill.appendChild(upBtn);
+      }
+
+      // Pill text (click to select/apply)
+      const labelSpan = document.createElement('span');
+      labelSpan.textContent = (index + 1) + '. ' + name;
+      labelSpan.style.cursor = 'pointer';
+      labelSpan.addEventListener('click', () => {
+        selectPreset(id, name);
+      });
+      pill.appendChild(labelSpan);
+
+      // Move Down badge (if not last)
+      if (index < validKeys.length - 1) {
+        const downBtn = document.createElement('span');
+        downBtn.className = 'preset-pill__del';
+        downBtn.textContent = '▼';
+        downBtn.title = 'Move down in cycle order';
+        downBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          swapPresets(id, validKeys[index + 1]);
+        });
+        pill.appendChild(downBtn);
+      }
+
+      // Delete X badge
+      const delBadge = document.createElement('span');
+      delBadge.className = 'preset-pill__del';
+      delBadge.textContent = '✕';
+      delBadge.title = 'Delete preset';
+      delBadge.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deletePreset(id);
+      });
+      pill.appendChild(delBadge);
+
+      presetPills.appendChild(pill);
+    });
+  }
+
+  async function swapPresets(idA, idB) {
+    const pA = currentPresets[idA];
+    const pB = currentPresets[idB];
+    if (!pA || !pB) return;
+
+    // 1. Immediately swap in local memory & re-render UI for instant smooth feedback
+    const cloneA = JSON.parse(JSON.stringify(pA));
+    const cloneB = JSON.parse(JSON.stringify(pB));
+    currentPresets[idA] = cloneB;
+    currentPresets[idB] = cloneA;
+    renderPresets();
+
+    // 2. Sequentially send psave commands with a delay so LittleFS flash locks don't collide
+    const payloadA = Object.assign({}, cloneA, { psave: idB, ib: true, sb: true });
+    const payloadB = Object.assign({}, cloneB, { psave: idA, ib: true, sb: true });
+
+    try {
+      await fetch('/json/si', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadA)
+      });
+      await new Promise(r => setTimeout(r, 450));
+
+      await fetch('/json/si', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadB)
+      });
+      await new Promise(r => setTimeout(r, 450));
+    } catch (_) {}
+
+    fetchPresets();
+  }
+
+  function selectPreset(id, name) {
+    activePresetId = id;
+    if (presetNameIn) presetNameIn.value = name || '';
+    if (presetUpdateBtn) presetUpdateBtn.hidden = false;
+
+    presetPills.querySelectorAll('.preset-pill').forEach(el => {
+      el.classList.toggle('is-on', +el.dataset.id === id);
+    });
+
+    send({ ps: id });
+  }
+
+  function deletePreset(id) {
+    if (activePresetId === id) {
+      activePresetId = 0;
+      if (presetNameIn) presetNameIn.value = '';
+      if (presetUpdateBtn) presetUpdateBtn.hidden = true;
+    }
+    send({ pdel: id });
+    setTimeout(fetchPresets, 400);
+    setTimeout(fetchPresets, 1200);
+  }
+
+  function wirePresets() {
+    if (presetSaveBtn && presetNameIn) {
+      // Save New Preset (assign next numeric ID)
+      presetSaveBtn.addEventListener('click', async () => {
+        const name = presetNameIn.value.trim() || 'Custom Preset';
+        let nextId = 1;
+        for (let i = 1; i <= 250; i++) {
+          if (!currentPresets[i] || !currentPresets[i].n) {
+            nextId = i;
+            break;
+          }
+        }
+        send({ psave: nextId, n: name, ib: true, sb: true });
+        presetNameIn.value = '';
+        activePresetId = nextId;
+        setTimeout(fetchPresets, 400);
+        setTimeout(fetchPresets, 1200);
+      });
+    }
+
+    if (presetUpdateBtn && presetNameIn) {
+      // Overwrite/Update Active Preset
+      presetUpdateBtn.addEventListener('click', async () => {
+        if (!activePresetId) return;
+        const name = presetNameIn.value.trim() || ('Preset ' + activePresetId);
+        send({ psave: activePresetId, n: name, ib: true, sb: true });
+        setTimeout(fetchPresets, 400);
+        setTimeout(fetchPresets, 1200);
+      });
+    }
+  }
+
+  // ---------- Apply remote state -> UI ----------
+  function applyState(s) {
+    // power
+    if (typeof s.on === 'boolean') {
+      powerBtn.setAttribute('aria-pressed', String(s.on));
+      powerState.textContent = s.on ? 'On' : 'Off';
+    }
+    // brightness
+    if (typeof s.bri === 'number') {
+      briSlider.value = s.bri;
+      briVal.textContent = Math.round(s.bri / 2.55) + '%';
+    }
+    // boot preset
+    if (s.def && typeof s.def.ps === 'number') {
+      activeBootPreset = s.def.ps;
+      if (bootPresetSel) bootPresetSel.value = String(s.def.ps);
+    }
+    // active preset
+    if (typeof s.ps === 'number' && s.ps > 0) {
+      activePresetId = s.ps;
+      if (presetPills) {
+        presetPills.querySelectorAll('.preset-pill').forEach((el) => {
+          el.classList.toggle('is-on', +el.dataset.id === s.ps);
+        });
+      }
+    }
+    // Discover segments and (re)render the selector if needed.
+    if (Array.isArray(s.seg)) {
+      const next = s.seg
+        .filter(x => x && typeof x.id === 'number' && (x.stop > x.start))
+        .map(x => ({ id: x.id, n: (x.n && x.n.trim()) || ('Segment ' + (x.id + 1)) }));
+      const sig = next.map(x => x.id + ':' + x.n).join('|');
+      if (sig !== segments.map(x => x.id + ':' + x.n).join('|')) {
+        segments = next;
+        renderSegPills();
+      }
+    }
+    // Pick which segment's state drives displayed color / effect / speed / intensity / palette.
+    const activeSeg = (activeSegId === null
+      ? (s.seg && s.seg[0])
+      : (Array.isArray(s.seg) ? s.seg.find(x => x.id === activeSegId) : null));
+    const seg = activeSeg || (Array.isArray(s.seg) ? s.seg[0] : s.seg) || null;
+    if (seg) {
+      // primary color
+      const c0 = seg.col && seg.col[0];
+      if (cpick && c0 && c0.length >= 3) {
+        suppressColorPush = true;
+        try { cpick.color.rgb = { r: c0[0], g: c0[1], b: c0[2] }; } catch (_) {}
+        suppressColorPush = false;
+      }
+      // effect highlight
+      if (typeof seg.fx === 'number') {
+        const rows = effectsEl.querySelectorAll('.effect');
+        rows.forEach((el) => {
+          el.classList.toggle('is-on', +el.dataset.id === seg.fx);
+        });
+      }
+      // speed & intensity
+      if (typeof seg.sx === 'number' && fxSpeed) {
+        fxSpeed.value = seg.sx;
+        fxSpeedVal.textContent = Math.round(seg.sx / 2.55) + '%';
+      }
+      if (typeof seg.ix === 'number' && fxIntensity) {
+        fxIntensity.value = seg.ix;
+        fxIntensityVal.textContent = Math.round(seg.ix / 2.55) + '%';
+      }
+      // palette highlight
+      if (typeof seg.pal === 'number' && palettesEl) {
+        palettesEl.querySelectorAll('.effect').forEach((el) => {
+          el.classList.toggle('is-on', +el.dataset.id === seg.pal);
+        });
+      }
+    }
+    // nightlight
+    if (s.nl) {
+      let activeMin = 0;
+      if (s.nl.on && typeof s.nl.dur === 'number') activeMin = s.nl.dur;
+      timerEl.querySelectorAll('.timer__btn').forEach((b) => {
+        b.classList.toggle('is-on', +b.dataset.min === activeMin);
+      });
+    }
+  }
+
   // ---------- Bootstrap ----------
   async function init() {
     wirePower();
     wireBrightness();
+    wireFxControls();
+    renderPalettes();
+    wirePresets();
     wireTimer();
     wireSchedule();
     wirePicker();
 
-    // Initial state fetch (HTTP, in case WS isn't ready yet)
+    // Initial state fetch
     try {
       const r = await fetch('/json/si');
       if (r.ok) {
@@ -472,6 +813,7 @@
     } catch (_) {}
 
     fetchEffects();
+    fetchPresets();
     connectWS();
   }
 

@@ -60,10 +60,64 @@
   </section>
 
   <section class="card">
+    <details class="accordion">
+      <summary class="card__label accordion__summary">
+        <span>Color Palette</span>
+        <svg class="accordion__chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <div class="accordion__content" style="padding-top: 12px;">
+        <ul id="palettes" class="effects" role="listbox" aria-label="Palettes">
+          <!-- Populated by index.js -->
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <section class="card">
     <label class="card__label">Effect</label>
     <ul id="effects" class="effects" role="listbox" aria-label="Effects">
       <li class="effect skel"></li><li class="effect skel"></li><li class="effect skel"></li>
     </ul>
+  </section>
+
+  <section class="card" id="fx-controls">
+    <details class="accordion">
+      <summary class="card__label accordion__summary">
+        <span>Effect Tuning (Speed & Intensity)</span>
+        <svg class="accordion__chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <div class="accordion__content" style="padding-top: 14px;">
+        <div class="slider-row" style="margin-bottom: 12px;">
+          <span class="schedule__name" style="min-width: 70px;">Speed</span>
+          <input id="fx-speed" class="slider" type="range" min="0" max="255" value="128" step="1" aria-label="Speed">
+          <output class="slider-val" id="fx-speed-val">50%</output>
+        </div>
+        <div class="slider-row">
+          <span class="schedule__name" style="min-width: 70px;">Intensity</span>
+          <input id="fx-intensity" class="slider" type="range" min="0" max="255" value="128" step="1" aria-label="Intensity">
+          <output class="slider-val" id="fx-intensity-val">50%</output>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section class="card">
+    <details class="accordion">
+      <summary class="card__label accordion__summary">
+        <span>Presets</span>
+        <svg class="accordion__chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <div class="accordion__content" style="padding-top: 12px;">
+        <div id="preset-pills" class="seg-pills__row" style="margin-bottom: 14px; gap: 8px;">
+          <!-- Saved presets pills -->
+        </div>
+        <div class="schedule__actions">
+          <input id="preset-name" class="schedule__input" type="text" placeholder="Preset name (e.g. Cozy Amber)" style="text-align:left; background:var(--bg-card-hi); border:1px solid var(--line); border-radius:var(--radius-btn); padding:10px 14px; flex:2;">
+          <button id="preset-save" class="schedule__btn schedule__btn--primary" style="flex:1;">Save New</button>
+          <button id="preset-update" class="schedule__btn" style="flex:1;" hidden>Update</button>
+        </div>
+      </div>
+    </details>
   </section>
 
   <section class="card">

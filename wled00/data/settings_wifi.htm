@@ -258,6 +258,8 @@ Static subnet mask:<br>
 	</div>
 	<div class="sec">
 		<h3>Configure Access Point</h3>
+		Remain in Access Point mode (AP-Only / Outdoor mode): <input type="checkbox" name="AO" onchange="if(this.checked) d.Sf.AB.value='2';"><br>
+		<i style="font-size:12px;color:var(--text-mute, #a0aec0)">Keeps Access Point active permanently with zero drops, timeouts, or freezes.</i><br><br>
 		AP SSID (leave empty for no AP):<br> <input type="text" name="AS" maxlength="32"><br>
 		Hide AP name: <input type="checkbox" name="AH"><br>
 		AP password (leave empty for open):<br> <input type="password" name="AP" maxlength="63" pattern="(.{8,63})|()" title="Empty or min. 8 characters"><br>

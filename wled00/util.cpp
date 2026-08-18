@@ -1071,7 +1071,7 @@ void handleBootLoop() {
       ++bl_actiontracker;
       break;
     case BOOTLOOP_ACTION_RESET:
-      resetConfig();
+      restoreConfig(); // Never wipe settings! Restore from backup instead!
       ++bl_actiontracker;
       break;
     case BOOTLOOP_ACTION_OTA:

@@ -629,9 +629,21 @@ void WLED::beginStrip()
     if (rlyPin < 0)
       strip.show(); // ensure LEDs are off if no relay is used
   }
-  colorUpdated(CALL_MODE_INIT); // will not send notification but will initiate transition
-  if (bootPreset > 0) {
-    applyPreset(bootPreset, CALL_MODE_INIT);
+  byte presetToBoot = bootPreset;
+  if (presetToBoot == 0) {
+    String dummy;
+    if (getPresetName(1, dummy)) {
+      presetToBoot = 1;
+    }
+  }
+
+  if (presetToBoot > 0) {
+    applyPreset(presetToBoot, CALL_MODE_INIT);
+  } else {
+    // If no presets exist, boot up OFF (Black)
+    bri = 0;
+    briLast = 128;
+    colorUpdated(CALL_MODE_INIT);
   }
 
   strip.setTransition(transitionDelayDefault);  // restore transitions
@@ -648,6 +660,7 @@ void WLED::initAP(bool resetAP)
   }
   DEBUG_PRINT(F("Opening access point "));
   DEBUG_PRINTLN(apSSID);
+  WiFi.mode(WIFI_AP);
   WiFi.softAPConfig(IPAddress(4, 3, 2, 1), IPAddress(4, 3, 2, 1), IPAddress(255, 255, 255, 0));
   WiFi.softAP(apSSID, apPass, apChannel, apHide);
   #ifdef ARDUINO_ARCH_ESP32
@@ -878,10 +891,15 @@ void WLED::handleConnection()
   #endif
   const bool wifiConfigured = WLED_WIFI_CONFIGURED;
 
-  // ignore connection handling if WiFi is configured and scan still running
-  // or within first 2s if WiFi is not configured or AP is always active
-  if ((wifiConfigured && multiWiFi.size() > 1 && WiFi.scanComplete() < 0) || (now < 2000 && (!wifiConfigured || apBehavior == AP_BEHAVIOR_ALWAYS)))
+  if (apBehavior == AP_BEHAVIOR_ALWAYS) {
+    if (!apActive) {
+      initAP();
+    }
+    if (apActive) {
+      dnsServer.processNextRequest();
+    }
     return;
+  }
 
   if (lastReconnectAttempt == 0 || forceReconnect) {
     DEBUG_PRINTF_P(PSTR("Initial connect or forced reconnect (@ %lus).\n"), nowS);

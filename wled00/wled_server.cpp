@@ -634,15 +634,9 @@ void initServer()
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     if (captivePortal(request)) return;
     bool forceWelcome = showWelcomePage;
-#ifdef WLED_LITE_SECURITY_GATES
-    // WLED-Lite: PIN status is the canonical "onboarded" signal, overriding
-    // upstream's WiFi-keyed `showWelcomePage` (which can be stale after WiFi
-    // is configured at runtime without a reboot). PIN unset = factory state =
-    // force welcome wizard; PIN set = onboarded = always serve the slim UI.
-    // Bench-tested: this prevents the welcome page from re-appearing after
-    // the user has completed all three wizard steps.
-    forceWelcome = (strlen(settingsPIN) == 0);
-#endif
+    // WLED-Lite: Require BOTH an Admin PIN set AND Persistent AP Mode (apBehavior == AP_BEHAVIOR_ALWAYS)
+    // to bypass the setup wizard and serve the main LED control page directly.
+    forceWelcome = !(strlen(settingsPIN) > 0 && apBehavior == AP_BEHAVIOR_ALWAYS);
     if (!forceWelcome || request->hasArg(F("sliders"))) {
       handleStaticContent(request, F("/index.htm"), 200, FPSTR(CONTENT_TYPE_HTML), PAGE_index, PAGE_index_length);
     } else {

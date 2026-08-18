@@ -258,6 +258,7 @@ void getSettingsJS(byte subPage, Print& settingsScript)
 
     printSetFormValue(settingsScript,PSTR("CM"),cmDNS);
     printSetFormIndex(settingsScript,PSTR("AB"),apBehavior);
+    printSetFormCheckbox(settingsScript,PSTR("AO"),apBehavior == AP_BEHAVIOR_ALWAYS);
     printSetFormValue(settingsScript,PSTR("AS"),apSSID);
     printSetFormCheckbox(settingsScript,PSTR("AH"),apHide);
 

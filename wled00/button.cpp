@@ -150,13 +150,12 @@ bool isButtonPressed(uint8_t b)
     case BTN_TYPE_TOUCH:
     case BTN_TYPE_TOUCH_SWITCH:
       #if defined(ARDUINO_ARCH_ESP32) && !defined(CONFIG_IDF_TARGET_ESP32C3)
-        #ifdef SOC_TOUCH_VERSION_2 //ESP32 S2 and S3 provide a function to check touch state (state is updated in interrupt)
-        if (touchInterruptGetLastStatus(pin)) return true;
-        #else
-        if (digitalPinToTouchChannel(pin) >= 0 && touchRead(pin) <= touchThreshold) return true;
-        #endif
+        if (digitalPinToTouchChannel(pin) >= 0) {
+          touch_value_t tv = touchRead(pin);
+          if (tv > 0 && tv <= (touchThreshold ? touchThreshold : 40)) return true;
+        }
       #endif
-     break;
+      break;
   }
   return false;
 }
@@ -369,12 +368,7 @@ void handleButton()
       buttons[b].waitTime = 0;
 
       if (b == 0 && dur > WLED_LONG_AP) { // long press on button 0 (when released)
-        if (dur > WLED_LONG_FACTORY_RESET) { // factory reset if pressed > 10 seconds
-          WLED_FS.format();
-          doReboot = true;
-        } else {
-          WLED::instance().initAP(true);
-        }
+        // Disabled automatic flash formatting / AP reset on long press to prevent capacitive touch false positives
       } else if (!buttons[b].longPressed) { //short press
         //NOTE: this interferes with double click handling in usermods so usermod needs to implement full button handling
         if (b != 1 && !buttons[b].macroDoublePress) { //don't wait for double press on buttons without a default action if no double press macro set
