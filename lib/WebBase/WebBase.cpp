@@ -97,8 +97,14 @@ static void loadNVS() {
 static void startAP(const String& deviceName) {
   uint8_t mac[6];
   esp_read_mac(mac, ESP_MAC_WIFI_STA);
-  char ssid[32];
-  snprintf(ssid, sizeof(ssid), "FlashLight-%02X%02X%02X", mac[3], mac[4], mac[5]);
+  // WiFi SSIDs are capped at 32 bytes — truncate the device-name portion so
+  // "<name>-XXXXXX" (a '-' plus 6 hex digits = 7 chars) always fits. Falls
+  // back to the default device name ("ESP32Device") when it hasn't been
+  // customized, so this reduces to a fixed-looking name in that case too.
+  char namePart[26];
+  strlcpy(namePart, deviceName.c_str(), sizeof(namePart));
+  char ssid[33];
+  snprintf(ssid, sizeof(ssid), "%s-%02X%02X%02X", namePart, mac[3], mac[4], mac[5]);
   WiFi.mode(WIFI_AP);
   WiFi.softAP(ssid);
   MDNS.begin(deviceName.c_str());
