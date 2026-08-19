@@ -59,6 +59,13 @@
 			rC++;
 			gId('+').style.display = gId("rml").childElementCount < 10 ? 'inline' : 'none'; // can't append to list anymore, hide button
 		}
+		// Boot FlashLight Core (factory partition) for WiFi/device-name setup
+		// or firmware reinstall -- same trigger as holding BOOT for 3s, just
+		// reachable from the browser instead of needing physical access.
+		async function returnToFlashLight() {
+			if (!confirm('Return to FlashLight Core? The device will reboot into setup mode.')) return;
+			await fetch('/api/webbase/factory', {method: 'POST'}).catch(() => {});
+		}
 	</script>
 </head>
 <body>
@@ -76,7 +83,8 @@
 		has its own WiFi settings UI. (Advanced: the running app can also be
 		reconfigured live via <code>POST /api/webbase/settings</code>.)</i><br><br>
 		Status: <span class="sip"> Not connected </span> <br>
-		Setup AP address (if broadcasting one): <span class="sip"> Not active </span> <br>
+		Setup AP address (if broadcasting one): <span class="sip"> Not active </span> <br><br>
+		<button type="button" onclick="returnToFlashLight()">Return to FlashLight Core</button>
 	</div>
 	<div class="sec">
 		<h3>mDNS</h3>

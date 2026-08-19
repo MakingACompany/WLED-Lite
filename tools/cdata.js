@@ -447,12 +447,6 @@ const char PAGE_dmxmap[] PROGMEM = R"=====()=====";
       filter: "html-minify",
     },
     {
-      file: "welcome.htm",
-      name: "PAGE_welcome",
-      method: "gzip",
-      filter: "html-minify",
-    },
-    {
       file: "liveview.htm",
       name: "PAGE_liveview",
       method: "gzip",

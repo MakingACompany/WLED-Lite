@@ -530,19 +530,11 @@ void initServer()
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     if (captivePortal(request)) return;
-    bool forceWelcome = showWelcomePage;
-    // WLED-Lite: Require BOTH an Admin PIN set AND the device actually being
-    // online (webbase.online()) to bypass the setup wizard and serve the main
-    // LED control page directly. Originally keyed off
-    // apBehavior==AP_BEHAVIOR_ALWAYS ("AP always on") -- WebBase now owns
-    // AP/STA state entirely, and "fully onboarded" is better expressed as
-    // "actually connected to WiFi" than "our AP happens to still be up".
-    forceWelcome = !(strlen(settingsPIN) > 0 && webbase.online());
-    if (!forceWelcome || request->hasArg(F("sliders"))) {
-      handleStaticContent(request, F("/index.htm"), 200, FPSTR(CONTENT_TYPE_HTML), PAGE_index, PAGE_index_length);
-    } else {
-      serveSettings(request);
-    }
+    // WLED-Lite: always serve the LED control page directly. WiFi setup is
+    // Core's job now, and the admin PIN (see SUBPAGE_SEC) is opt-in -- for
+    // installed/public signs, not a gate on normal personal use -- so there's
+    // no "not fully onboarded yet" state left that should redirect here.
+    handleStaticContent(request, F("/index.htm"), 200, FPSTR(CONTENT_TYPE_HTML), PAGE_index, PAGE_index_length);
   });
 
 #ifndef WLED_DISABLE_2D
@@ -682,25 +674,14 @@ void serveSettings(AsyncWebServerRequest* request, bool post) {
     else if (url.indexOf(F("lock")) > 0) subPage = SUBPAGE_LOCK;
   }
   //else if (url.indexOf("/edit")   >= 0) subPage = 10;
-  else subPage = SUBPAGE_WELCOME;
+  else subPage = SUBPAGE_MENU;
 
-#ifdef WLED_LITE_SECURITY_GATES
-  // WLED-Lite: on a factory-state device (no PIN yet) only WiFi and Security
-  // sub-pages are reachable -- forces the maintainer through the welcome
-  // wizard before any other admin surface is exposed. End user never sees
-  // this gate. Infrastructure sub-pages (CSS / JS / PINREQ / LOCK /
-  // WELCOME -- all >= SUBPAGE_LOCK) stay reachable; the hub (SUBPAGE_MENU)
-  // stays reachable so an admin can see what's there even pre-PIN.
-  if (strlen(settingsPIN) == 0 &&
-      subPage > SUBPAGE_MENU &&
-      subPage != SUBPAGE_WIFI &&
-      subPage != SUBPAGE_SEC &&
-      subPage < SUBPAGE_LOCK) {
-    serveMessage(request, 401, FPSTR(s_accessdenied),
-                 F("Set an admin PIN first (Settings &gt; Security)."), 254);
-    return;
-  }
-#endif
+  // Note: there is deliberately no "factory state forces setup first" gate
+  // here anymore -- the admin PIN (see SUBPAGE_SEC) is opt-in, for installed/
+  // public signs, not a requirement for normal personal use. Every settings
+  // sub-page is reachable with no PIN set; setting one is what turns on the
+  // pinRequired gate below for the pages that follow.
+  //
   // Originally gated on WLED_WIFI_CONFIGURED (isWiFiConfigured()) -- before
   // WiFi was set up, the WiFi subpage itself was PIN-exempt so a first-run
   // device could still be gotten online. WebBase now owns WiFi setup
@@ -789,7 +770,6 @@ void serveSettings(AsyncWebServerRequest* request, bool post) {
     case SUBPAGE_PINREQ  :  content = PAGE_settings_pin;  len = PAGE_settings_pin_length; code = 401;                 break;
     case SUBPAGE_CSS     :  content = PAGE_settingsCss;   len = PAGE_settingsCss_length;  contentType = FPSTR(CONTENT_TYPE_CSS); break;
     case SUBPAGE_JS      :  serveSettingsJS(request); return;
-    case SUBPAGE_WELCOME :  content = PAGE_welcome;       len = PAGE_welcome_length;       break;
     default:                content = PAGE_settings;      len = PAGE_settings_length;      break;
   }
   handleStaticContent(request, "", code, contentType, content, len);

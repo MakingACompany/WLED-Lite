@@ -529,13 +529,6 @@ void WLED::setup()
 
   if (needsCfgSave) serializeConfigToFS(); // usermods required new parameters; need to wait for strip to be initialised #4752
 
-  // WLED-Lite: a device is considered "still in first-run setup" if it has
-  // never actually gotten onto WiFi (webbase.online()) and has no backup
-  // config yet -- WiFi credentials themselves are no longer WLED's concern
-  // (see WebBase), so "never configured" is now expressed as "never connected".
-  if (!webbase.online() && !configBackupExists())
-    showWelcomePage = true;
-
   // NOTE: WiFi mode/hostname/persistence/connection are entirely WebBase's
   // responsibility now (see webbase.begin() above, near the top of setup()).
   // WLED no longer sets its own hostname here -- by the time we reach this

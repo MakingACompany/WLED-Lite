@@ -505,7 +505,6 @@ static_assert(WLED_MAX_BUSSES <= 32, "WLED_MAX_BUSSES exceeds hard limit");
 #define SUBPAGE_PINREQ          252
 #define SUBPAGE_CSS             253
 #define SUBPAGE_JS              254
-#define SUBPAGE_WELCOME         255
 
 #define NTP_PACKET_SIZE 48       // size of NTP receive buffer
 #define NTP_MIN_PACKET_SIZE 48   // min expected size - NTP v4 allows for "extended information" appended to the standard fields

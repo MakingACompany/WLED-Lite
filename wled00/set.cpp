@@ -25,11 +25,6 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
   {
     strlcpy(cmDNS, request->arg(F("CM")).c_str(), 33);
 
-    // WLED-Lite: welcome-wizard bypass now keys off webbase.online() ("fully
-    // set up and actually on the network") instead of the old
-    // apBehavior==AP_BEHAVIOR_ALWAYS ("our AP happens to be always-on").
-    showWelcomePage = !(webbase.online() && strlen(settingsPIN) > 0);
-
     #ifdef ARDUINO_ARCH_ESP32
     int tx = request->arg(F("TX")).toInt();
     txPower = min(max(tx, (int)WIFI_POWER_2dBm), (int)WIFI_POWER_19_5dBm);
@@ -554,8 +549,6 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
           strlcpy(settingsPIN, pin, 5);
         }
         settingsPIN[4] = 0;
-        // See the matching note in the SUBPAGE_WIFI handler above.
-        showWelcomePage = !(webbase.online() && strlen(settingsPIN) > 0);
       }
     }
 
