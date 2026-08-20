@@ -1,0 +1,3 @@
+[submodule "FlashLight"]
+	path = FlashLight
+	url = https://github.com/MakingACompany/FlashLight.git
