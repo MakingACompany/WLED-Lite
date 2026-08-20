@@ -56,7 +56,7 @@
     if (wsReady && ws.readyState === 1) {
       try { ws.send(JSON.stringify(payload)); return; } catch (e) {}
     }
-    fetch('/json/si', {
+    return fetch('/json/si', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -67,7 +67,7 @@
   // Debounced send factory: returns a function that throttles to one call per `ms`.
   function debouncer(ms) {
     let t = null, pending = null;
-    return (payload) => {
+    const fn = (payload) => {
       pending = payload;
       if (t) return;
       t = setTimeout(() => {
@@ -76,6 +76,16 @@
         if (p) send(p);
       }, ms);
     };
+    // Sends whatever's pending right now instead of waiting out the rest of
+    // the delay -- callers that are about to snapshot live state (preset
+    // save/update) need the device to have already applied the latest
+    // slider value, not whatever it had `ms` ago.
+    fn.flush = () => {
+      if (t) { clearTimeout(t); t = null; }
+      const p = pending; pending = null;
+      return p ? send(p) : undefined;
+    };
+    return fn;
   }
   const briSend = debouncer(120);
   const colorSend = debouncer(120);
@@ -676,6 +686,18 @@
     setTimeout(fetchPresets, 1200);
   }
 
+  // Slider/color changes are debounced (see debouncer() above) so dragging
+  // doesn't flood the device with requests -- but that means right after a
+  // drag there can still be a pending send the device hasn't applied yet.
+  // Saving a preset snapshots the device's *current* live state, so any
+  // pending send has to land first or the preset captures a stale value
+  // (exactly the "Update doesn't stick" symptom).
+  async function flushPendingSliders() {
+    await Promise.all(
+      [briSend, colorSend, fxSpeedSend, fxIntensitySend].map((d) => Promise.resolve(d.flush()))
+    );
+  }
+
   function wirePresets() {
     if (presetSaveBtn && presetNameIn) {
       // Save New Preset (assign next numeric ID)
@@ -688,6 +710,7 @@
             break;
           }
         }
+        await flushPendingSliders();
         send({ psave: nextId, n: name, ib: true, sb: true });
         presetNameIn.value = '';
         activePresetId = nextId;
@@ -701,6 +724,7 @@
       presetUpdateBtn.addEventListener('click', async () => {
         if (!activePresetId) return;
         const name = presetNameIn.value.trim() || ('Preset ' + activePresetId);
+        await flushPendingSliders();
         send({ psave: activePresetId, n: name, ib: true, sb: true });
         setTimeout(fetchPresets, 400);
         setTimeout(fetchPresets, 1200);
