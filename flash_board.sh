@@ -36,10 +36,8 @@ fi
 echo "Building FlashLight Core..."
 pio run --project-dir "$FL_DIR"
 
-PIO_ROOT="$REPO_ROOT"
-[ -f "${REPO_ROOT}/platformio.ini" ] || PIO_ROOT="${REPO_ROOT}/firmware"
-echo "Building WLED-Lite..."
-pio run --project-dir "$PIO_ROOT"
+# WLED-Lite itself is built by the Python tool below, once it knows which
+# of this project's environments (hardware variants) you actually want.
 
 PYTHONPATH="${FL_DIR}/tools${PYTHONPATH:+:$PYTHONPATH}" exec "${VENV_DIR}/bin/python" \
     -m flashlight_provision.cli --project-root "$REPO_ROOT" --project-name "WLED-Lite" "$@"

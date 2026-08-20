@@ -28,11 +28,8 @@ Write-Host "Building FlashLight Core..." -ForegroundColor Yellow
 pio run --project-dir $FlDir
 if ($LASTEXITCODE -ne 0) { Write-Error "Build failed"; exit 1 }
 
-$PioRoot = $RepoRoot
-if (-not (Test-Path (Join-Path $RepoRoot "platformio.ini"))) { $PioRoot = Join-Path $RepoRoot "firmware" }
-Write-Host "Building WLED-Lite..." -ForegroundColor Yellow
-pio run --project-dir $PioRoot
-if ($LASTEXITCODE -ne 0) { Write-Error "Build failed"; exit 1 }
+# WLED-Lite itself is built by the Python tool below, once it knows which
+# of this project's environments (hardware variants) you actually want.
 
 $env:PYTHONPATH = Join-Path $FlDir "tools"
 & "$VenvDir\Scripts\python.exe" -m flashlight_provision.cli --project-root $RepoRoot --project-name "WLED-Lite" @args
