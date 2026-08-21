@@ -29,7 +29,7 @@
 // TOSTRING(WLED_VERSION). DECLARE_FW_IDENTITY() requires true string-literal
 // tokens (see FwIdentity.h), so this can't be wired to that build-time value
 // automatically; bump it by hand alongside package.json's "version".
-#define WLED_LITE_VERSION_STR "0.1.1-lite"
+#define WLED_LITE_VERSION_STR "0.2.0-lite"
 
 static_assert(sizeof(WLED_RELEASE_NAME) <= fwid::PROJECT_MAX_LEN,
               "WLED_RELEASE_NAME exceeds fwid::PROJECT_MAX_LEN");
