@@ -17,11 +17,27 @@ Write-Host "Updating FlashLight submodule to its latest version..." -ForegroundC
 git -C $RepoRoot submodule update --remote --init FlashLight
 
 $VenvDir = Join-Path $FlDir "tools\.venv"
-if (-not (Test-Path $VenvDir)) {
-    Write-Host "Setting up a local virtual environment (first run only)..." -ForegroundColor Yellow
-    python -m venv $VenvDir
-    if ($LASTEXITCODE -ne 0) { Write-Error "venv creation failed"; exit 1 }
+$VenvPython = Join-Path $VenvDir "Scripts\python.exe"
+
+function Test-VenvReady {
+    if (-not (Test-Path $VenvPython)) { return $false }
+    & $VenvPython -c "import questionary, rich, requests, requests_toolbelt, serial, esptool" 2>$null
+    return ($LASTEXITCODE -eq 0)
+}
+
+if (-not (Test-VenvReady)) {
+    if (-not (Test-Path $VenvDir)) {
+        Write-Host "Setting up a local virtual environment (first run only)..." -ForegroundColor Yellow
+        python -m venv $VenvDir
+        if ($LASTEXITCODE -ne 0) { Write-Error "venv creation failed"; exit 1 }
+    } else {
+        Write-Host "Virtual environment exists but is missing packages -- reinstalling..." -ForegroundColor Yellow
+    }
     & "$VenvDir\Scripts\pip.exe" install --quiet -r (Join-Path $FlDir "tools\requirements.txt")
+    if (-not (Test-VenvReady)) {
+        Write-Error "Package install did not complete successfully. On Windows this is often caused by antivirus or OneDrive locking a file mid-install -- try running this script again (it will retry automatically), or temporarily exclude this folder from antivirus/OneDrive sync if it keeps failing."
+        exit 1
+    }
 }
 
 Write-Host "Building FlashLight Core..." -ForegroundColor Yellow

@@ -27,10 +27,23 @@ if [ "$BEFORE" != "$AFTER" ]; then
 fi
 
 VENV_DIR="${FL_DIR}/tools/.venv"
-if [ ! -d "$VENV_DIR" ]; then
-    echo "Setting up a local virtual environment (first run only)..."
-    python3 -m venv "$VENV_DIR"
+venv_ready() {
+    [ -x "${VENV_DIR}/bin/python" ] &&
+        "${VENV_DIR}/bin/python" -c "import questionary, rich, requests, requests_toolbelt, serial, esptool" >/dev/null 2>&1
+}
+if ! venv_ready; then
+    if [ ! -d "$VENV_DIR" ]; then
+        echo "Setting up a local virtual environment (first run only)..."
+        python3 -m venv "$VENV_DIR"
+    else
+        echo "Virtual environment exists but is missing packages -- reinstalling..."
+    fi
     "${VENV_DIR}/bin/pip" install --quiet -r "${FL_DIR}/tools/requirements.txt"
+    if ! venv_ready; then
+        echo "Error: package install did not complete successfully." >&2
+        echo "Run this script again to retry, or check for disk/permission issues in ${VENV_DIR}." >&2
+        exit 1
+    fi
 fi
 
 echo "Building FlashLight Core..."
